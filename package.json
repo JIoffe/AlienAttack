@@ -1,0 +1,21 @@
+{
+  "name": "alien_attack",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "uglifyjs-webpack-plugin": "^1.2.0",
+    "webpack": "^3.11.0"
+  },
+  "dependencies": {
+    "gl-matrix": "^2.4.0",
+    "libtess": "^1.2.2"
+  }
+}
