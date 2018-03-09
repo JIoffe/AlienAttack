@@ -4,7 +4,7 @@
 
 import {BinaryStream} from './fileio';
 const MAP_IMPORT_SCALE = 0.0015;
-const MAP_Z_IMPORT_SCALE = 0.0001;
+const MAP_Z_IMPORT_SCALE = MAP_IMPORT_SCALE * 0.0625;
 const MAP_HEI_SCALE = 0.0002576;
 
 export class MapReader{
