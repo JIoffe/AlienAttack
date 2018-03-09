@@ -7,14 +7,17 @@ const VertexShaders = {
 
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
+        uniform float uShade;
 
         varying vec2 vTextureCoords;
         varying vec3 vNorm;
+        varying float vShade;
 
         varying float depth;
 
         void main() {
             vNorm = normalize(aNormal);
+            vShade = 1.0 - uShade / 20.0;
             vTextureCoords = aTexCoords;
             gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
             depth = gl_Position.w;
@@ -31,13 +34,14 @@ const FragmentShaders = {
 
         varying vec2 vTextureCoords;
         varying vec3 vNorm;
+        varying float vShade;
 
         varying float depth;
 
         void main() {
             //vec3 norm = normalize(vNorm);
             //gl_FragColor = vec4(abs(norm.x), 0.0, abs(norm.z), 1.0);
-            float lighting = max(1.0 - depth / 18.0, 0.25);
+            float lighting = max(1.0 - depth / 18.0, 0.25)  * vShade;
             vec4 diffuse = texture2D(uSampler, vTextureCoords);
             diffuse.rgb *= lighting;
 
@@ -64,7 +68,8 @@ class ShaderProgram{
             projectionMatrix: gl.getUniformLocation(program, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(program, 'uModelViewMatrix'),
             sampler: gl.getUniformLocation(program, 'uSampler'),
-            cameraPos: gl.getUniformLocation(program, 'uCameraPos')
+            cameraPos: gl.getUniformLocation(program, 'uCameraPos'),
+            shade: gl.getUniformLocation(program, 'uShade')
         };
     }
 

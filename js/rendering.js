@@ -59,7 +59,8 @@ class Renderer{
             gl.useProgram(shaderProgram.program);
             gl.uniformMatrix4fv(shaderProgram.uniformLocations.projectionMatrix, false, this.projectionMatrix);
             gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewMatrix, false, modelViewMatrix);
-    
+            gl.uniform1f(shaderProgram.uniformLocations.shade, renderable.shade);
+
             gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.vertices);
             gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(shaderProgram.attribLocations.vertexPosition);
