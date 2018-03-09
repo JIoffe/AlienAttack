@@ -116,7 +116,7 @@ export class MapGeometry {
                 var renderableSet = new Renderable(gl, vertices, indices, texCoords, normals);
                 renderableSet.picnum = 0;
                 renderableSet.shade = g[0].shade;
-                console.log('shade', renderableSet.shade);
+
                 return renderableSet;
             });
     }
