@@ -26,91 +26,34 @@ export class MapGeometry {
 
             this.renderableSectors[i] = {
                 renderableWalls: this.buildWallGeometry(gl, mapData, sector),
-                renderableFloor: this.buildFloorGeometry(gl, mapData, sector),
-                renderableCeiling: this.buildCeilingGeometry(gl, mapData, sector)
+                renderableFloor: this.buildHorizontalGeometry(gl, mapData, sector, true),
+                renderableCeiling: this.buildHorizontalGeometry(gl, mapData, sector, false)
             };
         }
     }
 
     buildWallGeometry(gl, mapData, sector) {
-        //For slope
-        let slopeRef = mapData.walls[sector.wallptr];
-        let slopeP2 = mapData.walls[slopeRef.point2];
+        // let sectorWalls = mapData.walls.slice(sector.wallptr, sector.wallptr + sector.wallnum),
+        //     isInnerSector = !sectorWalls.some(w => w.nextsector === -1);
 
-        let normX = slopeP2.x - slopeRef.x;
-        let normZ = slopeP2.y - slopeRef.y;
-        let w = Math.sqrt(normX * normX + normZ * normZ);
-        normX /= w; normZ /= w;
+        let sectorWalls = this.findWallLoops(mapData, sector)[0];
 
-        let dZFloor = normX * sector.floorheinum,
-            dXFloor = normZ * sector.floorheinum,
-            dZCeiling = normX * sector.ceilingheinum,
-            dXCeiling = normZ * sector.ceilingheinum;
-
-
-        let sectorWalls = mapData.walls.slice(sector.wallptr, sector.wallptr + sector.wallnum);
         return array_utils
             .groupBy(sectorWalls, 'shade')
             .map(g => {
                 let vertices = [], texCoords = [], normals = [], indices = [];
                 let wallCount = 0;
 
-                g.forEach(wall => {
+                g.forEach((wall, i) => {
                     let nextWall = mapData.walls[wall.point2];
-    
-                    //Render height depends on whether or not this is a portal
-                    let floor, ceiling;
-                        floor = sector.floorz;
-                        ceiling = sector.ceilingz;
-    
-                    if(wall.nextsector < 0){
-                        floor = sector.floorz;
-                        ceiling = sector.ceilingz;
+
+                    if(wall.nextsector === -1){
+                        this.buildOuterWall(wall, sector, nextWall, vertices, texCoords, normals, indices);
                     }else{
-                        let nextsector = mapData.sectors[wall.nextsector];
-                        if(nextsector.ceilingz < sector.ceilingz){
-                            floor = nextsector.ceilingz;
-                            ceiling = sector.ceilingz;
-                        }else if(nextsector.floorz < sector.floorz){
-                            floor = nextsector.floorz;
-                            ceiling = sector.floorz;
-                        }else if(nextsector.floorz > sector.floorz){
-                            floor = sector.floorz;
-                            ceiling = nextsector.floorz;
-                        }else{
-                            return;
-                        }
+                        let nextSector = mapData.sectors[wall.nextsector];
+                        this.buildInnerSectorWall(wall, sector, nextSector, nextWall, vertices, texCoords, normals, indices);
                     }
-    
-                    const height = Math.abs(ceiling - floor);
-    
-                    vertices.push(
-                        nextWall.x, ceiling, nextWall.y,
-                        wall.x, ceiling, wall.y,
-                        nextWall.x, floor, nextWall.y,
-                        wall.x, floor, wall.y
-                    );
-    
-                    let normX = nextWall.x - wall.x;
-                    let normZ = nextWall.y - wall.y;
-                    let w = Math.sqrt(normX * normX + normZ * normZ);
-                    normX /= w; normZ /= w;
-                    normals.push(normX, 0, normZ, normX, 0, normZ, normX, 0, normZ, normX, 0, normZ);
-    
-                    let texRight = wall.xrepeat * wallXRepeatScale + wall.xpanning,
-                        texLeft = wall.xpanning,
-                        texTop = wall.ypanning,
-                        texBottom = height / (wall.yrepeat * wallYRepeatScale) + wall.ypanning;
-        
-                    texCoords.push(
-                        texRight, texTop,   //Top Right
-                        texLeft, texTop,  //Top left
-                        texRight, texBottom,  // Bottom right
-                        texLeft, texBottom  //bottom left
-                    )
-    
-                    indices.push(wallCount, wallCount + 2, wallCount + 3, wallCount + 3, wallCount + 1, wallCount);
-                    wallCount += 4;
+                    
                 });
         
                 var renderableSet = new Renderable(gl, vertices, indices, texCoords, normals);
@@ -121,18 +64,118 @@ export class MapGeometry {
             });
     }
 
-    buildCeilingGeometry(gl, mapData, sector) {
-        let r = this.buildHorizontalGeometry(gl, mapData, sector, sector.ceilingz, sector.ceilingheinum);
-        r.shade = sector.ceilingshade;
-        return r;
-    }
-    buildFloorGeometry(gl, mapData, sector) {
-        let r = this.buildHorizontalGeometry(gl, mapData, sector, sector.floorz, sector.floorheinum);
-        r.shade = sector.floorshade;
-        return r;
+    //Wall Utility Methods
+    buildOuterWall(wall, sector, nextWall, vertices, texCoords, normals, indices){
+        let ceilLeft = sector.getCeilingHeight(wall.x, wall.y),
+            ceilRight = sector.getCeilingHeight(nextWall.x, nextWall.y),
+            floorLeft = sector.getFloorHeight(wall.x, wall.y),
+            floorRight = sector.getFloorHeight(nextWall.x, nextWall.y);
+            
+        this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);
     }
 
-    buildHorizontalGeometry(gl, mapData, sector, height, heinum) {
+    buildInnerSectorWall(wall, sector, nextSector, nextWall, vertices, texCoords, normals, indices){
+        //TODO - Refactor more DRY
+
+        //Inner section walls are special because the "floor"
+        //and "ceiling" are separated. 
+
+        //Protrusion from floor of parent to floor of child (if any)
+        {
+            let ceilLeft = sector.getFloorHeight(wall.x, wall.y),
+                floorLeft = nextSector.getFloorHeight(wall.x, wall.y),
+                ceilRight = sector.getFloorHeight(nextWall.x, nextWall.y),
+                floorRight = nextSector.getFloorHeight(nextWall.x, nextWall.y);
+
+            if(floorLeft > ceilLeft)
+                floorLeft = ceilLeft - 1;
+            if(floorRight > ceilRight)
+                floorRight = ceilRight - 1;
+
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
+        }
+
+        //Indentation within parent sector floor (if any)
+        {
+            let ceilLeft = nextSector.getFloorHeight(wall.x, wall.y),
+                floorLeft = sector.getFloorHeight(wall.x, wall.y),
+                ceilRight = nextSector.getFloorHeight(nextWall.x, nextWall.y),
+                floorRight = sector.getFloorHeight(nextWall.x, nextWall.y);
+
+            if(floorLeft > ceilLeft)
+                floorLeft = ceilLeft - 1;
+            if(floorRight > ceilRight)
+                floorRight = ceilRight - 1;
+
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);             
+        }
+
+        // Protrusion from ceiling of parent (if any)
+        {
+            let ceilLeft = nextSector.getCeilingHeight(wall.x, wall.y),
+                floorLeft = sector.getCeilingHeight(wall.x, wall.y),
+                ceilRight = nextSector.getCeilingHeight(nextWall.x, nextWall.y),
+                floorRight = sector.getCeilingHeight(nextWall.x, nextWall.y);
+
+            if(floorLeft > ceilLeft)
+                ceilLeft = floorLeft + 1;
+            if(floorRight > ceilRight)
+                ceilRight = floorRight + 1;
+
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
+        }
+
+        //Indentation within parent sector ceiling (if any)
+        {
+            let ceilLeft = sector.getFloorHeight(wall.x, wall.y),
+                floorLeft = nextSector.getFloorHeight(wall.x, wall.y),
+                ceilRight = sector.getFloorHeight(nextWall.x, nextWall.y),
+                floorRight = nextSector.getFloorHeight(nextWall.x, nextWall.y);
+
+            if(floorLeft > ceilLeft)
+                floorLeft = ceilLeft - 1;
+            if(floorRight > ceilRight)
+                floorRight = ceilRight - 1;
+
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);             
+        }
+    }
+
+    buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices){
+        this.applyWallVertices(vertices, wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight);
+        this.applyWallTexCoords(wall, texCoords);
+
+        let norm = wall.getNormal(nextWall);
+        normals.push(norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z);
+
+        let wallCount = !!indices.length ? indices[indices.length - 1] + 4 : 0;
+        indices.push(wallCount, wallCount + 2, wallCount + 3, wallCount + 3, wallCount + 1, wallCount);
+    }
+
+    applyWallTexCoords(wall, texCoords){
+        let texRight = wall.xrepeat * wallXRepeatScale + wall.xpanning,
+        texLeft = wall.xpanning,
+        texTop = wall.ypanning,
+        texBottom = wall.yrepeat + wall.ypanning;
+
+        texCoords.push(
+            texRight, texTop,   //Top Right
+            texLeft, texTop,  //Top left
+            texRight, texBottom,  // Bottom right
+            texLeft, texBottom  //bottom left
+        )
+    }
+
+    applyWallVertices(vertices, wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight){
+        vertices.push(
+            nextWall.x, ceilRight, nextWall.y,
+            wall.x, ceilLeft, wall.y,
+            nextWall.x, floorRight, nextWall.y,
+            wall.x, floorLeft, wall.y
+        );
+    }
+
+    buildHorizontalGeometry(gl, mapData, sector, isFloor) {
         let wallLoops = this.findWallLoops(mapData, sector);
 
         tessy.gluTessNormal(0, 0, 1);
@@ -152,24 +195,12 @@ export class MapGeometry {
 
         let indices = [], vertices = [], normals = [], texCoords = [];
 
-        //For slope
-        // let slopeRef = mapData.walls[sector.wallptr];
-        // let slopeP2 = mapData.walls[slopeRef.point2];
-
-        // let normX = slopeP2.x - slopeRef.x;
-        // let normZ = slopeP2.y - slopeRef.y;
-        // let w = Math.sqrt(normX * normX + normZ * normZ);
-
-        // normX /= w; normZ /= w;
-
-        // let dZ = normX * heinum,
-        //     dX = normZ * heinum;
-
         for(let i = 0; i < points.length; i += 2){
             let x = points[i],
-                z = points[i+1];
+                z = points[i+1],
+                y = isFloor ? sector.getFloorHeight(x, z) : sector.getCeilingHeight(x, z);
 
-            vertices.push(x, height, z);
+            vertices.push(x, y, z);
             normals.push(0, 1.0, 0);
             texCoords.push(x / 0.75, z / 0.75);
             indices.push(indices.length);
@@ -177,6 +208,7 @@ export class MapGeometry {
 
         let renderableSet = new Renderable(gl, vertices, indices, texCoords, normals);
         renderableSet.picnum = 1;
+        renderableSet.shade = isFloor ? sector.floorshade : sector.ceilingshade;
         return renderableSet;
     }
 
