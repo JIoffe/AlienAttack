@@ -3,8 +3,8 @@ import * as libtess from 'libtess'
 import * as aa_math from '../math'
 import * as array_utils from '../utils/array.utils'
 
-const wallXRepeatScale = 0.09,
-    wallYRepeatScale = 0.225;
+const MAP_IMPORT_SCALE = 0.0015;
+const MAP_Z_IMPORT_SCALE = MAP_IMPORT_SCALE * 0.0625;
 
 ///
 // Encapsulates preparing map geometry for rendering
@@ -143,7 +143,7 @@ export class MapGeometry {
 
     buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices){
         this.applyWallVertices(vertices, wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight);
-        this.applyWallTexCoords(wall, texCoords);
+        this.applyWallTexCoords(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, texCoords);
 
         let norm = wall.getNormal(nextWall);
         normals.push(norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z);
@@ -152,11 +152,21 @@ export class MapGeometry {
         indices.push(wallCount, wallCount + 2, wallCount + 3, wallCount + 3, wallCount + 1, wallCount);
     }
 
-    applyWallTexCoords(wall, texCoords){
-        let texRight = wall.xrepeat * wallXRepeatScale + wall.xpanning,
-        texLeft = wall.xpanning,
-        texTop = wall.ypanning,
-        texBottom = wall.yrepeat + wall.ypanning;
+    applyWallTexCoords(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, texCoords){
+        //*panning = offset in texels
+        //*repeat = texels per world unit
+        const texPixelWidth = 64,
+            pixelOffset = 0.015625,
+            xOffset = -wall.xpanning * pixelOffset,
+            yOffset = -wall.ypanning * pixelOffset,
+            wallWidth = Math.sqrt(Math.pow(wall.x - nextWall.x, 2) + Math.pow(wall.y - nextWall.y, 2));
+        
+        const maxTileWidth = 2;
+        
+        let texRight = xOffset + wall.xrepeat / (texPixelWidth / 8),// (wall.xrepeat / 255),
+            texLeft = xOffset,
+            texTop = yOffset,
+            texBottom = yOffset + 1;//(Math.abs(ceilLeft - floorLeft) * 0.1) / (wall.yrepeat * pixelOffset);
 
         texCoords.push(
             texRight, texTop,   //Top Right
