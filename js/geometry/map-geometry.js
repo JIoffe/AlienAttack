@@ -57,7 +57,7 @@ export class MapGeometry {
                 });
         
                 var renderableSet = new Renderable(gl, vertices, indices, texCoords, normals);
-                renderableSet.picnum = 0;
+                renderableSet.picnum = 0;//g[0].picnum;
                 renderableSet.shade = g[0].shade;
 
                 return renderableSet;
@@ -217,7 +217,7 @@ export class MapGeometry {
         }
 
         let renderableSet = new Renderable(gl, vertices, indices, texCoords, normals);
-        renderableSet.picnum = 1;
+        renderableSet.picnum = isFloor ? sector.floorpicnum : sector.ceilingpicnum;
         renderableSet.shade = isFloor ? sector.floorshade : sector.ceilingshade;
         return renderableSet;
     }
