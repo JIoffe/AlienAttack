@@ -3,6 +3,8 @@ import {VertexShaders, FragmentShaders, ShaderProgram} from './shaders';
 import {MapGeometry} from './geometry/map-geometry';
 import * as aa_math from './math';
 import * as art from './art';
+import { Skybox } from './geometry/skybox';
+import { TextureUtils } from './utils/texture.utils';
 
 class Renderer{
     constructor(canvas){
@@ -13,6 +15,8 @@ class Renderer{
         const w = this.gl.viewportWidth;
         const h = this.gl.viewportHeight;
         this.projectionMatrix = aa_math.buildProjectionMatrix(45, w, h, 0.1, 1000);
+
+        this.skybox = new Skybox(this.gl, art.skyBox);
     }
 
     get isReady(){
@@ -39,56 +43,82 @@ class Renderer{
         const gl = this.gl;
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
+        //Draw Skybox
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+        gl.disable(gl.DEPTH_TEST);
+        this.draw(this.skybox.renderable, null, this.skybox.renderable.texture);
+        gl.enable(gl.DEPTH_TEST);
+
         if(!this.renderQueue)
             return;
         
         //Extract "View matrix" based on player position and orientation
-        const modelViewMatrix = mat4.create();
+        this.modelViewMatrix = mat4.create();
         //const modelViewMatrix = aa_math.buildCameraEyeMatrix(scene.playerPos, scene.playerRotation);
-        mat4.rotateY(modelViewMatrix, modelViewMatrix, -scene.playerRotation);
-        mat4.translate(modelViewMatrix, modelViewMatrix, [
+        mat4.rotateY(this.modelViewMatrix, this.modelViewMatrix, -scene.playerRotation);
+        mat4.translate(this.modelViewMatrix, this.modelViewMatrix, [
             -scene.playerPos[0],
             -scene.playerPos[1],
             -scene.playerPos[2]
         ]);
 
-        for(var i = 0; i < this.renderQueue.length; ++i){
-            const renderable = this.renderQueue[i];
+        this.renderQueue.forEach(renderable => {
+            let texture = this.wallTextures[renderable.picnum];
+            this.draw(renderable, texture); 
+        });
+    }
 
-            const shaderProgram = this.shaderPrograms[0];       
-            gl.useProgram(shaderProgram.program);
+    draw(renderable, texture, cubemap){
+        const gl = this.gl,
+              shaderProgram = this.shaderPrograms[renderable.shader];
+              
+        gl.useProgram(shaderProgram.program);
+        if(shaderProgram.uniformLocations.projectionMatrix != null)
             gl.uniformMatrix4fv(shaderProgram.uniformLocations.projectionMatrix, false, this.projectionMatrix);
-            gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+        
+        if(shaderProgram.uniformLocations.modelViewMatrix != null)
+            gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewMatrix, false, this.modelViewMatrix);
+        
+        if(shaderProgram.uniformLocations.shade >= 0)
             gl.uniform1f(shaderProgram.uniformLocations.shade, renderable.shade);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.vertices);
-            gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(shaderProgram.attribLocations.vertexPosition);
+        gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.vertices);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shaderProgram.attribLocations.vertexPosition);
 
-            if(!!renderable.buffers.texCoords){
-                gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.texCoords);
-                gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(shaderProgram.attribLocations.texPosition);
-            }
+        if(!!renderable.buffers.texCoords){
+            gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.texCoords);
+            gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(shaderProgram.attribLocations.texPosition);
+        }
 
+        if(!!renderable.buffers.normals){
             gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.normals);
             gl.vertexAttribPointer(shaderProgram.attribLocations.normalPosition, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(shaderProgram.attribLocations.normalPosition);
-
-            //Texture!
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.wallTextures[renderable.picnum]);
-            gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
-
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderable.buffers.indices);
-            gl.drawElements(gl.TRIANGLES, renderable.indexCount, gl.UNSIGNED_SHORT, 0)
         }
+
+        gl.activeTexture(gl.TEXTURE0);
+        if(!!cubemap){
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap);
+            gl.uniform1i(shaderProgram.uniformLocations.samplerCube, 0);
+        }
+
+        if(!!texture){
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
+        }
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderable.buffers.indices);
+        gl.drawElements(gl.TRIANGLES, renderable.indexCount, gl.UNSIGNED_SHORT, 0)
     }
+    
     //Utility Methods
     initializeShaders(){
         const gl = this.gl;
 
         this.shaderPrograms = [
+            new ShaderProgram(gl, VertexShaders.skybox, FragmentShaders.skybox),
             new ShaderProgram(gl, VertexShaders.walls, FragmentShaders.walls)
         ];
     }

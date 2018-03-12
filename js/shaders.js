@@ -1,4 +1,16 @@
 const VertexShaders = {
+    skybox:
+        `
+        attribute vec4 aVertexPosition;
+        attribute vec3 aNormal;
+        
+        //uniform mat4 NormalMatrix;
+        varying highp vec3 vNorm;
+        void main(void) {
+            gl_Position = aVertexPosition;
+            vNorm = normalize(vec4(aNormal, 1.0).xyz);
+        }        
+        `,
     walls:
         `        
         attribute vec4 aVertexPosition;
@@ -26,6 +38,16 @@ const VertexShaders = {
 }
 
 const FragmentShaders = {
+    skybox:
+        `
+        precision mediump float;
+
+        uniform samplerCube uSamplerCube;
+        varying highp vec3 vNorm;
+        void main(void) {                
+            gl_FragColor = textureCube(uSamplerCube, normalize(vNorm));
+        }        
+        `,
     walls:
         `
         precision mediump float;
@@ -68,6 +90,7 @@ class ShaderProgram{
             projectionMatrix: gl.getUniformLocation(program, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(program, 'uModelViewMatrix'),
             sampler: gl.getUniformLocation(program, 'uSampler'),
+            samplerCube: gl.getUniformLocation(program, 'uSamplerCube'),
             cameraPos: gl.getUniformLocation(program, 'uCameraPos'),
             shade: gl.getUniformLocation(program, 'uShade')
         };

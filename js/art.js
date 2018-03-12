@@ -5,3 +5,5 @@ export const wallTextures = [
     '/img/floor1.png',
     '/img/grate.png'
 ];
+
+export const skyBox = '/img/skybox/space';
