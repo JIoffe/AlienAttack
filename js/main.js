@@ -27,23 +27,20 @@ import {MapReader} from './io/mapreader';
             const canvas = d.getElementById('c');
             time = new Time();
             input = new InputListener(d);
-            
-            renderer = new Renderer(canvas);
-            if(!renderer.isReady){
-                resolve(false);
-                return;
-            }
-    
             scene = new Scene();
-    
-            //Load the map file
-            var mapReader = new MapReader();
-            mapReader.readUrl('./maps/newboard.map')
+            renderer = new Renderer(canvas);    
+
+            renderer.initialize()
+                .then(() => {
+                    var mapReader = new MapReader();
+
+                    return mapReader.readUrl('./maps/newboard.map')
+                })                        
                 .then(mapData => {
                     scene.setMap(mapData);
                     renderer.setMap(mapData);
                     resolve(true);
-                });
+                });      
         });
     }
 

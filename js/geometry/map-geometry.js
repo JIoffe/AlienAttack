@@ -41,7 +41,6 @@ export class MapGeometry {
         return array_utils
             .groupBy(sectorWalls, ['picnum','shade'])
             .map(g => {
-                console.log(g);
                 let vertices = [], texCoords = [], normals = [], indices = [];
                 let wallCount = 0;
 

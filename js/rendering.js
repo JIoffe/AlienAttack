@@ -9,8 +9,6 @@ import { TextureUtils } from './utils/texture.utils';
 class Renderer{
     constructor(canvas){
         this.gl = this.getGLRenderingContext(canvas);
-        this.initializeShaders();
-        this.initializeTextures(art.wallTextures);
 
         const w = this.gl.viewportWidth;
         const h = this.gl.viewportHeight;
@@ -19,6 +17,13 @@ class Renderer{
         this.skybox = new Skybox(this.gl, art.skyBox);
     }
 
+    initialize(){
+        return new Promise((resolve, reject) => {
+            this.initializeShaders();
+            this.initializeTextures(art.wallTextures)
+                .then(() => console.log('renderer initialized') || resolve());
+        });
+    }
     get isReady(){
         return !!this.gl 
             && (!!this.shaderPrograms && this.shaderPrograms.every(p => p.isReady));
@@ -138,24 +143,37 @@ class Renderer{
     initializeTextures(wallImages){
         const gl = this.gl;
 
-        this.wallTextures = new Array(wallImages.length);
-        for(let i = 0; i < wallImages.length; ++i){
-            const tex = gl.createTexture();
-            this.wallTextures[i] = tex;
+        return new Promise((resolve, reject) => {
+            let imgPromises = wallImages
+                .map(path => {
+                    return new Promise((resolve, reject) => {
+                        const tex = gl.createTexture();
 
-            let image = new Image();
-            image.onload = () =>{
-                gl.bindTexture(gl.TEXTURE_2D, tex);
-                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);					
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-                gl.generateMipmap(gl.TEXTURE_2D);
-                
-                gl.bindTexture(gl.TEXTURE_2D, null);                
-            }
-            image.src = wallImages[i];
-        }
+                        let image = new Image();
+                        image.onload = () =>{
+                            gl.bindTexture(gl.TEXTURE_2D, tex);
+                            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);					
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+                            gl.generateMipmap(gl.TEXTURE_2D);
+                            
+                            gl.bindTexture(gl.TEXTURE_2D, null); 
+                            
+                            resolve(tex);
+                        }
+
+                        image.src = path;
+                    });
+                });
+
+            Promise.all(imgPromises)
+                .then(result => {
+                    console.log(result);
+                    this.wallTextures = result;
+                    resolve();
+                });
+        });
     }
 
     getGLRenderingContext(canvas){
