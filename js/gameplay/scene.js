@@ -8,7 +8,7 @@ import * as aa_math from '../math';
 import * as physics from './physics';
 
 //AKA the game state
-const PLAYER_MOVEMENT_SPEED = 2;
+const PLAYER_MOVEMENT_SPEED = 5;
 const PLAYER_TURN_SPEED = 1.4; //RADIANS PER S
 
 export class Scene{
@@ -25,7 +25,7 @@ export class Scene{
     }
 
     update(time, input){
-        const playerMovementDelta = time.secondsSinceLastFrame * 2;
+        const playerMovementDelta = time.secondsSinceLastFrame * PLAYER_MOVEMENT_SPEED;
 
         if(input.moveForward)
             physics.apply2DThrust(this.playerPos, this.playerRotation, playerMovementDelta);

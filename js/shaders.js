@@ -63,7 +63,7 @@ const FragmentShaders = {
         void main() {
             //vec3 norm = normalize(vNorm);
             //gl_FragColor = vec4(abs(norm.x), 0.0, abs(norm.z), 1.0);
-            float lighting = max(1.0 - depth / 18.0, 0.25)  * vShade;
+            float lighting = max(1.0 - depth / 25.0, 0.25)  * vShade;
             vec4 diffuse = texture2D(uSampler, vTextureCoords);
             diffuse.rgb *= lighting;
 

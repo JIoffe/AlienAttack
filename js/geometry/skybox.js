@@ -7,7 +7,12 @@ export class Skybox{
         let vertices = [-1.0, 1.0, -1.0,
                         1.0, 1.0, -1.0,
                         1.0, -1.0, -1.0,
-                        -1.0, -1.0, -1.0];      
+                        -1.0, -1.0, -1.0];
+        
+        let normals = [-1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0,
+            1.0, -1.0, 1.0,
+            -1.0, -1.0, 1.0];
 
 
         let indices = [2,1,0,0,3,2];
@@ -21,7 +26,7 @@ export class Skybox{
             texpathRoot + '_front.png',
         ];
 
-        this.renderable = new Renderable(gl, vertices, indices, null, vertices);
+        this.renderable = new Renderable(gl, vertices, indices, null, normals);
         this.renderable.shader = 0;
         
         TextureUtils.initCubemap(gl, texPaths).then(cubemap => this.renderable.texture = cubemap);
