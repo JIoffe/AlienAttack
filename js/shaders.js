@@ -4,11 +4,11 @@ const VertexShaders = {
         attribute vec4 aVertexPosition;
         attribute vec3 aNormal;
         
-        //uniform mat4 NormalMatrix;
+        uniform mat3 uNormalMatrix;
         varying highp vec3 vNorm;
         void main(void) {
             gl_Position = aVertexPosition;
-            vNorm = normalize(vec4(aNormal, 1.0).xyz);
+            vNorm = normalize(uNormalMatrix*aNormal);
         }        
         `,
     walls:
@@ -31,7 +31,7 @@ const VertexShaders = {
             vNorm = normalize(aNormal);
             vShade = 1.0 - uShade / 20.0;
             vTextureCoords = aTexCoords;
-            gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+            gl_Position = uProjectionMatrix * (uModelViewMatrix * aVertexPosition);
             depth = gl_Position.w;
         }
         `    
@@ -89,6 +89,7 @@ class ShaderProgram{
         this.uniformLocations = {
             projectionMatrix: gl.getUniformLocation(program, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(program, 'uModelViewMatrix'),
+            normalMatrix: gl.getUniformLocation(program, 'uNormalMatrix'),
             sampler: gl.getUniformLocation(program, 'uSampler'),
             samplerCube: gl.getUniformLocation(program, 'uSamplerCube'),
             cameraPos: gl.getUniformLocation(program, 'uCameraPos'),

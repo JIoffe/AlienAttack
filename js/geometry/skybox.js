@@ -17,8 +17,8 @@ export class Skybox{
             texpathRoot + '_left.png',
             texpathRoot + '_up.png',
             texpathRoot + '_down.png',
+            texpathRoot + '_back.png',
             texpathRoot + '_front.png',
-            texpathRoot + '_back.png'
         ];
 
         this.renderable = new Renderable(gl, vertices, indices, null, vertices);

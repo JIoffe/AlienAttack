@@ -1,4 +1,4 @@
-import {mat4} from 'gl-matrix'
+import {mat3, mat4} from 'gl-matrix'
 import {VertexShaders, FragmentShaders, ShaderProgram} from './shaders';
 import {MapGeometry} from './geometry/map-geometry';
 import * as aa_math from './math';
@@ -43,15 +43,6 @@ class Renderer{
         const gl = this.gl;
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
-        //Draw Skybox
-        gl.clear(gl.DEPTH_BUFFER_BIT);
-        gl.disable(gl.DEPTH_TEST);
-        this.draw(this.skybox.renderable, null, this.skybox.renderable.texture);
-        gl.enable(gl.DEPTH_TEST);
-
-        if(!this.renderQueue)
-            return;
-        
         //Extract "View matrix" based on player position and orientation
         this.modelViewMatrix = mat4.create();
         //const modelViewMatrix = aa_math.buildCameraEyeMatrix(scene.playerPos, scene.playerRotation);
@@ -61,6 +52,25 @@ class Renderer{
             -scene.playerPos[1],
             -scene.playerPos[2]
         ]);
+
+        //The 3x3 inverse transpose of the MV matrix can transform normals
+        let invTranspose = mat4.create();
+        mat4.transpose(invTranspose, this.modelViewMatrix);
+        //mat4.invert(invTranspose, invTranspose);
+
+        this.normalMatrix = mat3.create();
+        mat3.fromMat4(this.normalMatrix, invTranspose);
+
+
+        //Draw Skybox
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+        gl.disable(gl.DEPTH_TEST);
+        this.draw(this.skybox.renderable, null, this.skybox.renderable.texture);
+        gl.enable(gl.DEPTH_TEST);
+
+        if(!this.renderQueue)
+            return;
+        
 
         this.renderQueue.forEach(renderable => {
             let texture = this.wallTextures[renderable.picnum];
@@ -79,7 +89,10 @@ class Renderer{
         if(shaderProgram.uniformLocations.modelViewMatrix != null)
             gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewMatrix, false, this.modelViewMatrix);
         
-        if(shaderProgram.uniformLocations.shade >= 0)
+        if(shaderProgram.uniformLocations.normalMatrix != null)
+            gl.uniformMatrix3fv(shaderProgram.uniformLocations.normalMatrix, false, this.normalMatrix);
+
+        if(shaderProgram.uniformLocations.shade != null)
             gl.uniform1f(shaderProgram.uniformLocations.shade, renderable.shade);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.vertices);
