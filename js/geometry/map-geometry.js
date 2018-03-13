@@ -164,10 +164,10 @@ export class MapGeometry {
         
         const maxTileWidth = 2;
         
-        let texRight = xOffset + wall.xrepeat / (texPixelWidth / 8),// (wall.xrepeat / 255),
+        let texRight = xOffset - wall.xrepeat / (texPixelWidth / 8),// (wall.xrepeat / 255),
             texLeft = xOffset,
             texTop = yOffset,
-            texBottom = yOffset + 1;//(Math.abs(ceilLeft - floorLeft) * 0.1) / (wall.yrepeat * pixelOffset);
+            texBottom = yOffset - wall.yrepeat / (texPixelWidth / 16);//(Math.abs(ceilLeft - floorLeft) * 0.1) / (wall.yrepeat * pixelOffset);
 
         texCoords.push(
             texRight, texTop,   //Top Right
@@ -205,6 +205,8 @@ export class MapGeometry {
         tessy.gluTessEndPolygon();
 
         let indices = [], vertices = [], normals = [], texCoords = [];
+        const texPixelWidth = 64,
+            pixelOffset = 0.015625;
 
         for(let i = 0; i < points.length; i += 2){
             let x = points[i],
@@ -213,7 +215,10 @@ export class MapGeometry {
 
             vertices.push(x, y, z);
             normals.push(0, 1.0, 0);
-            texCoords.push(x / 0.75, z / 0.75);
+            let xOffset = (isFloor ? sector.floorxpanning : sector.ceilingxpanning) * pixelOffset,
+                yOffset = (isFloor ? sector.floorypanning : sector.ceilingypanning) * pixelOffset;
+
+            texCoords.push(x / 0.75 + xOffset, z / 0.75 + yOffset);
             indices.push(indices.length);
         }
 

@@ -61,7 +61,7 @@ class Renderer{
         //The 3x3 inverse transpose of the MV matrix can transform normals
         let invTranspose = mat4.create();
         mat4.transpose(invTranspose, this.modelViewMatrix);
-        //mat4.invert(invTranspose, invTranspose);
+        mat4.invert(invTranspose, invTranspose);
 
         this.normalMatrix = mat3.create();
         mat3.fromMat4(this.normalMatrix, invTranspose);
