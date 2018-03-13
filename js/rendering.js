@@ -41,7 +41,7 @@ class Renderer{
 
     renderFrame(scene){
         const gl = this.gl;
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
         
         //Extract "View matrix" based on player position and orientation
         this.modelViewMatrix = mat4.create();
@@ -63,7 +63,6 @@ class Renderer{
 
 
         //Draw Skybox
-        gl.clear(gl.DEPTH_BUFFER_BIT);
         gl.disable(gl.DEPTH_TEST);
         this.draw(this.skybox.renderable, null, this.skybox.renderable.texture);
         gl.enable(gl.DEPTH_TEST);

@@ -39,8 +39,9 @@ export class MapGeometry {
         let sectorWalls = this.findWallLoops(mapData, sector)[0];
 
         return array_utils
-            .groupBy(sectorWalls, 'shade')
+            .groupBy(sectorWalls, ['picnum','shade'])
             .map(g => {
+                console.log(g);
                 let vertices = [], texCoords = [], normals = [], indices = [];
                 let wallCount = 0;
 
@@ -57,7 +58,7 @@ export class MapGeometry {
                 });
         
                 var renderableSet = new Renderable(gl, vertices, indices, texCoords, normals);
-                renderableSet.picnum = 0;//g[0].picnum;
+                renderableSet.picnum = g[0].picnum;
                 renderableSet.shade = g[0].shade;
                 renderableSet.shader = 1;
 

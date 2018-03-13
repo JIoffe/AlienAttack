@@ -42,7 +42,7 @@ export class MapReader{
         
                     let playerX = stream.nextInt32 * MAP_IMPORT_SCALE;
                     let playerZ = stream.nextInt32 * MAP_IMPORT_SCALE;
-                    let playerY = stream.nextInt32 * MAP_Z_IMPORT_SCALE;
+                    let playerY = -stream.nextInt32 * MAP_Z_IMPORT_SCALE;
                     const playerPos = [
                         playerX, playerY, playerZ
                     ];
