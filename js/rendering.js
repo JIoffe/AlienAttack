@@ -190,8 +190,8 @@ class Renderer{
         gl.depthFunc(gl.LESS);
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        // gl.enable(gl.CULL_FACE);
-        // gl.cullFace(gl.BACK);
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
