@@ -1,4 +1,5 @@
 import * as aa_math from '../math'
+import { Bounds } from '../collision/bounds.struct';
 
 export class Sector{
     constructor(stream, MAP_Z_IMPORT_SCALE, MAP_HEI_SCALE){
@@ -22,6 +23,22 @@ export class Sector{
         s.extra = stream.nextInt16
     }
 
+    /**
+     * Returns the Axis-Aligned Boudning Box of this sector
+     * @param {Array} walls 
+     */
+    getBounds(walls){
+        return this.bounds || (this.bounds = (() => {
+            let allwalls = walls.slice(this.wallptr, this.wallptr + this.wallnum);
+            return new Bounds(allwalls);
+        })());
+    }
+
+    /**
+     * Returns the y-coordinate of the floor at (x, z)
+     * @param {number} x 
+     * @param {number} z 
+     */
     getFloorHeight(x, z){
         return this.floorz + this.getSlopeOffset(x, z, this.floorheinum);
     }
@@ -49,5 +66,43 @@ export class Sector{
 
         this.refNormX = normX;
         this.refNormZ = normZ;     
+    }
+
+    getNeighboringSectors(walls){
+        return this.neighboringSectors || (this.neighboringSectors = (() => {
+            let pvsNeighbors = new Set(
+                walls
+                    .slice(this.wallptr, this.wallptr + this.wallnum)
+                    .map(w => w.nextsector)
+            );
+            pvsNeighbors.delete(-1);
+    
+            return Array.from(pvsNeighbors);
+        })());
+    }
+
+    ///
+    // A single sector can have multiple walls - if it has inner sectors!
+    ///
+    getWallLoops(walls){
+        return this.wallloops || (this.wallloops = (() => {
+            let loops = [],
+            wallCount = 0;
+
+            while (wallCount < this.wallnum) {
+                let loop = [];
+                for (let first = wallCount + this.wallptr, i = first; ;) {
+                    let wall = walls[i++];
+                    wallCount++;
+                    loop.push(wall);
+
+                    if (wall.point2 === first)
+                        break;
+                }
+                loops.push(loop);
+            }
+
+            return loops;
+        })());
     }
 }

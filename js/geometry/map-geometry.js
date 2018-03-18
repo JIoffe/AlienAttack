@@ -20,20 +20,17 @@ export class MapGeometry {
     }
 
     buildRenderableGeometry(gl, mapData) {
-        this.renderableSectors = new Array(mapData.sectors.length);
-        for (let i = 0; i < mapData.sectors.length; ++i) {
-            let sector = mapData.sectors[i];
-
-            this.renderableSectors[i] = {
+        this.renderableSectors = mapData.sectors.map(sector => {
+            return {
                 renderableWalls: this.buildWallGeometry(gl, mapData, sector),
                 renderableFloor: this.buildHorizontalGeometry(gl, mapData, sector, true),
                 renderableCeiling: this.buildHorizontalGeometry(gl, mapData, sector, false)
-            };
-        }
+            }
+        });
     }
 
     buildWallGeometry(gl, mapData, sector) {
-        let sectorWalls = this.findWallLoops(mapData, sector)[0];
+        let sectorWalls = sector.getWallLoops(mapData.walls)[0];
 
         return array_utils
             .groupBy(sectorWalls, ['picnum','shade'])
@@ -194,7 +191,7 @@ export class MapGeometry {
     }
 
     buildHorizontalGeometry(gl, mapData, sector, isFloor) {
-        let wallLoops = this.findWallLoops(mapData, sector);
+        let wallLoops = sector.getWallLoops(mapData.walls);
 
         tessy.gluTessNormal(0, 0, 1);
 
@@ -243,29 +240,6 @@ export class MapGeometry {
         renderableSet.shader = 1;
         
         return renderableSet;
-    }
-
-    ///
-    // A single sector can have multiple walls - if it has inner sectors!
-    ///
-    findWallLoops(mapData, sector) {
-        let loops = [],
-            wallCount = 0;
-
-        while (wallCount < sector.wallnum) {
-            let loop = [];
-            for (let first = wallCount + sector.wallptr, i = first; ;) {
-                let wall = mapData.walls[i++];
-                wallCount++;
-                loop.push(wall);
-
-                if (wall.point2 === first)
-                    break;
-            }
-            loops.push(loop);
-        }
-
-        return loops;
     }
 }
 

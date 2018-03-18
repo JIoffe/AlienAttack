@@ -33,7 +33,6 @@ import {MapReader} from './io/mapreader';
             renderer.initialize()
                 .then(() => {
                     var mapReader = new MapReader();
-
                     return mapReader.readUrl('./maps/newboard.map')
                 })                        
                 .then(mapData => {

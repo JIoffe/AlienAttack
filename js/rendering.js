@@ -6,24 +6,49 @@ import * as art from './art';
 import { Skybox } from './geometry/skybox';
 import { TextureUtils } from './utils/texture.utils';
 
-class Renderer{
+const MAX_SECTORS_DRAWN = 64;
+const MAX_RENDER_QUEUE_SIZE = 128;
+
+//View Frustum
+const fov = 45;
+const near = 0.1;
+const far = 100;
+const far_squared = far * far;
+const frustum_dot = Math.cos(aa_math.Constants.DegToRad * fov);
+const frustum_half_dot = Math.cos(aa_math.Constants.DegToRad * (fov/2));
+
+const VEC3_UP = new Float32Array([0, 1, 0]);
+
+const cullingEpsilon = 0.05;
+const cullingDot = frustum_half_dot - cullingEpsilon;
+
+export class Renderer{
     constructor(canvas){
         this.gl = this.getGLRenderingContext(canvas);
-
         const w = this.gl.viewportWidth;
         const h = this.gl.viewportHeight;
-        this.projectionMatrix = aa_math.buildProjectionMatrix(45, w, h, 0.1, 1000);
+        this.projectionMatrix = aa_math.buildProjectionMatrix(fov, w, h, near, far);
 
         this.skybox = new Skybox(this.gl, art.skyBox);
+        this.sectorRenderQueue = new Int32Array(MAX_SECTORS_DRAWN);
+        this.pvsSectorSet = new Set();
+        this.nSectorsToDraw = 0;
+
+        //These float32 buffer matrices are used for camera transforms
+        this.modelViewMatrix = mat4.create();
+        this.invTranspose = mat4.create();
+        this.normalMatrix = mat3.create();
+        this.cameraPos = new Float32Array(3);
     }
 
     initialize(){
         return new Promise((resolve, reject) => {
             this.initializeShaders();
             this.initializeTextures(art.wallTextures)
-                .then(() => console.log('renderer initialized') || resolve());
+                .then(() => console.log('Renderer Initialized') || resolve());
         });
     }
+
     get isReady(){
         return !!this.gl 
             && (!!this.shaderPrograms && this.shaderPrograms.every(p => p.isReady));
@@ -31,55 +56,102 @@ class Renderer{
 
     setMap(mapData){
         this.mapGeometry = new MapGeometry(this.gl, mapData);
-        this.renderQueue = this.mapGeometry
-            .sectors
-            .reduce((a,c) => a.concat(c.renderableWalls), []);
-
-        this.mapGeometry.sectors.forEach(s => {
-            if(!!s.renderableFloor)
-                this.renderQueue.push(s.renderableFloor);
-
-            if(!!s.renderableCeiling)
-                this.renderQueue.push(s.renderableCeiling);
-        });
     }
 
+    determineRenderQueue(scene){
+        if(scene.playerSectorIndex < 0){
+            //We're out of bounds - don't draw anything. An alternative would be to draw everything :)
+            this.nSectorsToDraw = 0;
+            return;
+        }
+
+        this.pvsSectorSet.clear();
+
+        const walls = scene.mapData.walls,
+            sectors = scene.mapData.sectors,
+            _this = this;
+
+        //Determine -view normal
+        let viewNormX = -Math.sin(scene.playerRotation),
+            viewNormZ = -Math.cos(scene.playerRotation);
+
+        //We most likely want to draw the sector we're in :)
+        let i = 1;
+        this.sectorRenderQueue[0] = scene.playerSectorIndex;
+
+        traversePVSNeighbors(sectors[scene.playerSectorIndex]);
+
+        function traversePVSNeighbors(sector){
+            let neighbors = sector.getNeighboringSectors(walls);
+            for(let k = neighbors.length - 1; k >= 0; --k){
+                let neighbor = neighbors[k];
+                if(_this.pvsSectorSet.has(neighbor))
+                    continue;
+
+                //Mark this as traversed
+                _this.pvsSectorSet.add(neighbor);
+                
+                let bounds = sectors[neighbor].getBounds(walls);
+    
+                //Is the AABB of the sector within the (clipped) viewing cone?
+                for(let l = bounds.points.length - 1; l >= 0; --l){
+                    let viewToPointX = bounds.points[l].x - scene.playerPos[0],
+                    viewToPointZ = bounds.points[l].y - scene.playerPos[2];
+    
+                    let w = Math.sqrt(viewToPointX*viewToPointX + viewToPointZ*viewToPointZ);
+                    viewToPointX /= w;
+                    viewToPointZ /= w;
+    
+                    if(viewToPointX * viewNormX + viewToPointZ * viewNormZ >= cullingDot){
+                        _this.sectorRenderQueue[i++] = neighbor;
+                        traversePVSNeighbors(sectors[neighbor]);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        this.nSectorsToDraw = i;
+    }
     renderFrame(scene){
+        this.determineRenderQueue(scene);
+
         const gl = this.gl;
         gl.clear(gl.DEPTH_BUFFER_BIT);
         
-        //Extract "View matrix" based on player position and orientation
-        this.modelViewMatrix = mat4.create();
-        //const modelViewMatrix = aa_math.buildCameraEyeMatrix(scene.playerPos, scene.playerRotation);
-        mat4.rotateY(this.modelViewMatrix, this.modelViewMatrix, -scene.playerRotation);
-        mat4.translate(this.modelViewMatrix, this.modelViewMatrix, [
-            -scene.playerPos[0],
-            -scene.playerPos[1],
-            -scene.playerPos[2]
-        ]);
+        this.cameraPos[0] = -scene.playerPos[0];
+        this.cameraPos[1] = -scene.playerPos[1];
+        this.cameraPos[2] = -scene.playerPos[2];
+        mat4.fromRotation(this.modelViewMatrix, -scene.playerRotation, VEC3_UP)
+        mat4.translate(this.modelViewMatrix, this.modelViewMatrix, this.cameraPos);
 
         //The 3x3 inverse transpose of the MV matrix can transform normals
-        let invTranspose = mat4.create();
-        mat4.transpose(invTranspose, this.modelViewMatrix);
-        mat4.invert(invTranspose, invTranspose);
-
-        this.normalMatrix = mat3.create();
-        mat3.fromMat4(this.normalMatrix, invTranspose);
-
+        mat4.transpose(this.invTranspose, this.modelViewMatrix);
+        mat4.invert(this.invTranspose, this.invTranspose);
+        mat3.fromMat4(this.normalMatrix, this.invTranspose);
 
         //Draw Skybox
         gl.disable(gl.DEPTH_TEST);
         this.draw(this.skybox.renderable, null, this.skybox.renderable.texture);
         gl.enable(gl.DEPTH_TEST);
-
-        if(!this.renderQueue)
-            return;
         
 
-        this.renderQueue.forEach(renderable => {
-            let texture = this.wallTextures[renderable.picnum];
-            this.draw(renderable, texture); 
-        });
+        //Draw all the (potentially) visible sectors - walls first. Walls are more likely to occlude floors/ceilings
+        for(let i = this.nSectorsToDraw - 1; i >= 0; --i){
+            let sector = this.mapGeometry.sectors[this.sectorRenderQueue[i]],
+                r;
+
+            for(let j = sector.renderableWalls.length - 1; j >= 0; --j){
+                r = sector.renderableWalls[j];
+                this.draw(r, this.wallTextures[r.picnum]);
+            }
+
+            r = sector.renderableFloor;
+            this.draw(r, this.wallTextures[r.picnum]);
+
+            r = sector.renderableCeiling;
+            this.draw(r, this.wallTextures[r.picnum]);
+        }
     }
 
     draw(renderable, texture, cubemap){
@@ -154,9 +226,13 @@ class Renderer{
                             gl.bindTexture(gl.TEXTURE_2D, tex);
                             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);					
-                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-                            gl.generateMipmap(gl.TEXTURE_2D);
+                            // Uncomment for mipmapping
+                            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);					
+                            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+                            // gl.generateMipmap(gl.TEXTURE_2D);
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);					
+                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                            gl.bindTexture(gl.TEXTURE_2D, null); 
                             
                             gl.bindTexture(gl.TEXTURE_2D, null); 
                             
@@ -193,10 +269,9 @@ class Renderer{
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
 
+        //Set clear color to black even though it will likely never be used
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
         return gl;
     }
 }
-
-export {Renderer}
