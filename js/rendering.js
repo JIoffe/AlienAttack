@@ -1,4 +1,4 @@
-import {mat3, mat4} from 'gl-matrix'
+import {mat3, mat4, vec4} from 'gl-matrix'
 import {VertexShaders, FragmentShaders, ShaderProgram} from './shaders';
 import {MapGeometry} from './geometry/map-geometry';
 import * as aa_math from './math';
@@ -10,17 +10,24 @@ const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
 
 //View Frustum
-const fov = 45;
+const fov = 60;
 const near = 0.1;
 const far = 100;
 const far_squared = far * far;
 const frustum_dot = Math.cos(aa_math.Constants.DegToRad * fov);
 const frustum_half_dot = Math.cos(aa_math.Constants.DegToRad * (fov/2));
 
+const farplaneWidth = Math.tan(aa_math.Constants.DegToRad * (fov / 2)) * far;
+const farplaneHalfWidth = farplaneWidth / 2;
+
 const VEC3_UP = new Float32Array([0, 1, 0]);
 
 const cullingEpsilon = 0.05;
+const clipLeft = -1.0;
+const clipRight = 1.0;
 const cullingDot = frustum_half_dot - cullingEpsilon;
+
+const cullp0 = vec4.create();
 
 export class Renderer{
     constructor(canvas){
@@ -59,54 +66,88 @@ export class Renderer{
     }
 
     determineRenderQueue(scene){
+        // cullp0[0] = 0; cullp0[1] = 0; cullp0[2] = 0;
+        // vec3.transformMat4(cullp0, cullp0, this.modelViewMatrix);
+        // console.log(cullp0)
+
         if(scene.playerSectorIndex < 0){
             //We're out of bounds - don't draw anything. An alternative would be to draw everything :)
             this.nSectorsToDraw = 0;
             return;
         }
 
+        //This process is intentionally simple
+        //Javascript is slow. Overly aggressive culling will cost more than just drawing everything
         this.pvsSectorSet.clear();
 
         const walls = scene.mapData.walls,
             sectors = scene.mapData.sectors,
             _this = this;
 
-        //Determine -view normal
-        let viewNormX = -Math.sin(scene.playerRotation),
-            viewNormZ = -Math.cos(scene.playerRotation);
 
         //We most likely want to draw the sector we're in :)
         let i = 1;
         this.sectorRenderQueue[0] = scene.playerSectorIndex;
+        this.pvsSectorSet.add(scene.playerSectorIndex);
+        traversePVSNeighbors(scene.playerSectorIndex)
 
-        traversePVSNeighbors(sectors[scene.playerSectorIndex]);
-
-        function traversePVSNeighbors(sector){
+        function traversePVSNeighbors(sectorIndex){
+            let sector = sectors[sectorIndex];
+            //Fetch interesting sectors 
             let neighbors = sector.getNeighboringSectors(walls);
             for(let k = neighbors.length - 1; k >= 0; --k){
-                let neighbor = neighbors[k];
-                if(_this.pvsSectorSet.has(neighbor))
+                let neighborIndex = neighbors[k];
+                if(_this.pvsSectorSet.has(neighborIndex))
                     continue;
 
-                //Mark this as traversed
-                _this.pvsSectorSet.add(neighbor);
-                
-                let bounds = sectors[neighbor].getBounds(walls);
-    
-                //Is the AABB of the sector within the (clipped) viewing cone?
-                for(let l = bounds.points.length - 1; l >= 0; --l){
-                    let viewToPointX = bounds.points[l].x - scene.playerPos[0],
-                    viewToPointZ = bounds.points[l].y - scene.playerPos[2];
-    
-                    let w = Math.sqrt(viewToPointX*viewToPointX + viewToPointZ*viewToPointZ);
-                    viewToPointX /= w;
-                    viewToPointZ /= w;
-    
-                    if(viewToPointX * viewNormX + viewToPointZ * viewNormZ >= cullingDot){
-                        _this.sectorRenderQueue[i++] = neighbor;
-                        traversePVSNeighbors(sectors[neighbor]);
+                let neighbor = sectors[neighborIndex],
+                    isPV = false;
+                //Bunch all the walls that match this sector's index
+                for(let j = neighbor.wallptr + neighbor.wallnum - 1; j >= neighbor.wallptr; --j){
+                    let wall = walls[j];
+                    if(wall.nextsector !== sectorIndex)
+                        continue;
+
+                    cullp0[0] = wall.x; cullp0[1] = scene.playerPos[1]; cullp0[2] = wall.y; cullp0[3] = 1.0;
+                    vec4.transformMat4(cullp0, cullp0, _this.modelViewMatrix);
+
+                    let clip0x = cullp0[0] / cullp0[3],
+                        clip0z = cullp0[2] / cullp0[3];
+
+                    let nextWall = walls[wall.point2];
+                    cullp0[0] = nextWall.x; cullp0[1] = scene.playerPos[1]; cullp0[2] = nextWall.y; cullp0[3] = 1.0;
+                    vec4.transformMat4(cullp0, cullp0, _this.modelViewMatrix);
+
+                    let clip1x = cullp0[0] / cullp0[3],
+                        clip1z = cullp0[2] / cullp0[3];
+
+                    let minX, maxX, minZ, maxZ;
+                    if(clip0x < clip1x){
+                        minX = clip0x;
+                        maxX = clip1x;
+                    }else{
+                        minX = clip1x;
+                        maxX = clip0x;
+                    }
+
+                    if(clip0z < clip1z){
+                        minZ = clip0z;
+                        maxZ = clip1z;
+                    }else{
+                        minZ = clip1z;
+                        maxZ = clip0z;
+                    }
+
+                    if(minX < clipRight && maxX > clipLeft && maxZ > -1.0 && minZ < 1.0){
+                        isPV = true;
                         break;
                     }
+                }
+
+                if(isPV){
+                    _this.sectorRenderQueue[i++] = neighborIndex;
+                    _this.pvsSectorSet.add(neighborIndex);
+                    traversePVSNeighbors(neighborIndex);
                 }
             }
         }
@@ -114,8 +155,6 @@ export class Renderer{
         this.nSectorsToDraw = i;
     }
     renderFrame(scene){
-        this.determineRenderQueue(scene);
-
         const gl = this.gl;
         gl.clear(gl.DEPTH_BUFFER_BIT);
         
@@ -129,6 +168,12 @@ export class Renderer{
         mat4.transpose(this.invTranspose, this.modelViewMatrix);
         mat4.invert(this.invTranspose, this.invTranspose);
         mat3.fromMat4(this.normalMatrix, this.invTranspose);
+
+        //Pre-multiply the projection matrix
+        mat4.multiply(this.modelViewMatrix, this.projectionMatrix, this.modelViewMatrix);
+
+        //Now that we have our View/Projection matrix we're able to clip portals against clip space
+        this.determineRenderQueue(scene);
 
         //Draw Skybox
         gl.disable(gl.DEPTH_TEST);
@@ -159,11 +204,8 @@ export class Renderer{
               shaderProgram = this.shaderPrograms[renderable.shader];
               
         gl.useProgram(shaderProgram.program);
-        if(shaderProgram.uniformLocations.projectionMatrix != null)
-            gl.uniformMatrix4fv(shaderProgram.uniformLocations.projectionMatrix, false, this.projectionMatrix);
-        
-        if(shaderProgram.uniformLocations.modelViewMatrix != null)
-            gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewMatrix, false, this.modelViewMatrix);
+        if(shaderProgram.uniformLocations.modelViewProj != null)
+            gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, this.modelViewMatrix);
         
         if(shaderProgram.uniformLocations.normalMatrix != null)
             gl.uniformMatrix3fv(shaderProgram.uniformLocations.normalMatrix, false, this.normalMatrix);

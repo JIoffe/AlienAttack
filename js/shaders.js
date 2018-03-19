@@ -17,8 +17,7 @@ const VertexShaders = {
         attribute vec2 aTexCoords;
         attribute vec3 aNormal;
 
-        uniform mat4 uModelViewMatrix;
-        uniform mat4 uProjectionMatrix;
+        uniform mat4 uModelViewProj;
         uniform float uShade;
 
         varying vec2 vTextureCoords;
@@ -31,7 +30,7 @@ const VertexShaders = {
             vNorm = normalize(aNormal);
             vShade = 1.0 - uShade / 20.0;
             vTextureCoords = aTexCoords;
-            gl_Position = uProjectionMatrix * (uModelViewMatrix * aVertexPosition);
+            gl_Position = uModelViewProj * aVertexPosition;
             depth = gl_Position.w;
         }
         `    
@@ -87,6 +86,7 @@ class ShaderProgram{
         };
 
         this.uniformLocations = {
+            modelViewProj: gl.getUniformLocation(program, 'uModelViewProj'),
             projectionMatrix: gl.getUniformLocation(program, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(program, 'uModelViewMatrix'),
             normalMatrix: gl.getUniformLocation(program, 'uNormalMatrix'),
