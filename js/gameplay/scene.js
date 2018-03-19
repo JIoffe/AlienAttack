@@ -11,13 +11,21 @@ import * as physics from './physics';
 const PLAYER_MOVEMENT_SPEED = 5;
 const PLAYER_TURN_SPEED = 1.4; //RADIANS PER S
 
+const PLAYER_HEIGHT = 2.25;
+const PLAYER_HEIGHT_PADDING = 0.25;
+
+const GRAVITY = 15;
+
 var i = 0;
 
 export class Scene{
     constructor(){
+        //TODO - abstract into rigid body
         this.playerPos = [0,0,0];
         //Only care about the Y rotation
         this.playerRotation = 0;
+        this.playerIsAirborne = false;
+        this.playerYVelocity = 0;
     }
 
     setMap(mapData){
@@ -45,12 +53,32 @@ export class Scene{
         else if(input.turnRight)
             this.playerRotation -= PLAYER_TURN_SPEED * time.secondsSinceLastFrame;
 
-        if(input.jump)
-            this.playerPos[1] += playerMovementDelta;
-        else if(input.crouch)
-            this.playerPos[1] -= playerMovementDelta;
+        if(input.jump && !this.playerIsAirborne)
+            this.playerYVelocity = 5;
+        // else if(input.crouch)
+        //     this.playerPos[1] -= playerMovementDelta;
             
         this.playerSectorIndex = this.determinePlayerSector();
+
+        if(this.playerSectorIndex >= 0){
+            //Only apply gravity if we're not floating in space...
+            this.playerYVelocity -= GRAVITY * time.secondsSinceLastFrame;
+            this.playerPos[1] += this.playerYVelocity * time.secondsSinceLastFrame;
+
+            let floorHeight = this.mapData.sectors[this.playerSectorIndex].getFloorHeight(this.playerPos[0], this.playerPos[2]) + PLAYER_HEIGHT;
+            if(this.playerPos[1] <= floorHeight){
+                this.playerIsAirborne = false;
+                this.playerPos[1] = floorHeight;
+            }else{
+                let ceilingHeight = this.mapData.sectors[this.playerSectorIndex].getCeilingHeight(this.playerPos[0], this.playerPos[2]) - PLAYER_HEIGHT_PADDING;
+                if(this.playerPos[1] > ceilingHeight){
+                    this.playerYVelocity = 0;
+                    this.playerPos[1] = ceilingHeight;
+                }
+
+                this.playerIsAirborne = true;
+            }
+        }
     }
 
 
