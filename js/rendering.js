@@ -5,6 +5,8 @@ import * as aa_math from './math';
 import * as art from './art';
 import { Skybox } from './geometry/skybox';
 import { TextureUtils } from './utils/texture.utils';
+import { SpriteBatch } from './geometry/sprite-batch';
+import { Laser } from './geometry/fx/laser';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -13,20 +15,11 @@ const MAX_RENDER_QUEUE_SIZE = 128;
 const fov = 60;
 const near = 0.1;
 const far = 100;
-const far_squared = far * far;
-const frustum_dot = Math.cos(aa_math.Constants.DegToRad * fov);
-const frustum_half_dot = Math.cos(aa_math.Constants.DegToRad * (fov/2));
-
-const farplaneWidth = Math.tan(aa_math.Constants.DegToRad * (fov / 2)) * far;
-const farplaneHalfWidth = farplaneWidth / 2;
 
 const VEC3_UP = new Float32Array([0, 1, 0]);
 
-const cullingEpsilon = 0.05;
 const clipLeft = -1.0;
 const clipRight = 1.0;
-const cullingDot = frustum_half_dot - cullingEpsilon;
-
 const cullp0 = vec4.create();
 
 export class Renderer{
@@ -40,9 +33,16 @@ export class Renderer{
         this.sectorRenderQueue = new Int32Array(MAX_SECTORS_DRAWN);
         this.pvsSectorSet = new Set();
         this.nSectorsToDraw = 0;
+        
+        //Initialize static buffers - TODO will be to batch
+        Laser.initializeGeometry(this.gl);
+
+        //Sprite Batch for GUI elements - not that many really
+        this.guiSpriteBatch = new SpriteBatch(this.gl, 32);
 
         //These float32 buffer matrices are used for camera transforms
         this.modelViewMatrix = mat4.create();
+        this.dynamicModelViewMatrix = mat4.create();
         this.invTranspose = mat4.create();
         this.normalMatrix = mat3.create();
         this.cameraPos = new Float32Array(3);
@@ -51,8 +51,14 @@ export class Renderer{
     initialize(){
         return new Promise((resolve, reject) => {
             this.initializeShaders();
-            this.initializeTextures(art.wallTextures)
-                .then(() => console.log('Renderer Initialized') || resolve());
+            TextureUtils.initTextures2D(this.gl, art.wallTextures)
+                .then(textures => {
+                    this.wallTextures = textures;
+                    console.log(`Loaded ${textures.length} map textures`);
+
+                    return this.guiSpriteBatch.setSpriteSheet(this.gl, art.gui);
+                })
+                .then(() => resolve());
         });
     }
 
@@ -66,10 +72,6 @@ export class Renderer{
     }
 
     determineRenderQueue(scene){
-        // cullp0[0] = 0; cullp0[1] = 0; cullp0[2] = 0;
-        // vec3.transformMat4(cullp0, cullp0, this.modelViewMatrix);
-        // console.log(cullp0)
-
         if(scene.playerSectorIndex < 0){
             //We're out of bounds - don't draw anything. An alternative would be to draw everything :)
             this.nSectorsToDraw = 0;
@@ -102,7 +104,8 @@ export class Renderer{
 
                 let neighbor = sectors[neighborIndex],
                     isPV = false;
-                //Bunch all the walls that match this sector's index
+
+                //Transform relevant portals to clip space
                 for(let j = neighbor.wallptr + neighbor.wallnum - 1; j >= neighbor.wallptr; --j){
                     let wall = walls[j];
                     if(wall.nextsector !== sectorIndex)
@@ -112,33 +115,15 @@ export class Renderer{
                     vec4.transformMat4(cullp0, cullp0, _this.modelViewMatrix);
 
                     let clip0x = cullp0[0] / cullp0[3],
-                        clip0z = cullp0[2] / cullp0[3];
+                        clip0w = cullp0[3];
 
                     let nextWall = walls[wall.point2];
                     cullp0[0] = nextWall.x; cullp0[1] = scene.playerPos[1]; cullp0[2] = nextWall.y; cullp0[3] = 1.0;
                     vec4.transformMat4(cullp0, cullp0, _this.modelViewMatrix);
 
-                    let clip1x = cullp0[0] / cullp0[3],
-                        clip1z = cullp0[2] / cullp0[3];
+                    let clip1x = cullp0[0] / cullp0[3];
 
-                    let minX, maxX, minZ, maxZ;
-                    if(clip0x < clip1x){
-                        minX = clip0x;
-                        maxX = clip1x;
-                    }else{
-                        minX = clip1x;
-                        maxX = clip0x;
-                    }
-
-                    if(clip0z < clip1z){
-                        minZ = clip0z;
-                        maxZ = clip1z;
-                    }else{
-                        minZ = clip1z;
-                        maxZ = clip0z;
-                    }
-
-                    if(minX < clipRight && maxX > clipLeft && maxZ > -1.0 && minZ < 1.0){
+                    if(clip0w > 0 || cullp0[3] > 0){
                         isPV = true;
                         break;
                     }
@@ -151,7 +136,7 @@ export class Renderer{
                 }
             }
         }
-        
+
         this.nSectorsToDraw = i;
     }
     renderFrame(scene){
@@ -197,15 +182,28 @@ export class Renderer{
             r = sector.renderableCeiling;
             this.draw(r, this.wallTextures[r.picnum]);
         }
+
+        //Draw sprites and effects
+        for(let i = scene.laserBlasts.length - 1; i >= 0; --i){
+            let lb = scene.laserBlasts[i];
+            mat4.fromRotationTranslation(this.dynamicModelViewMatrix, lb.rot, lb.pos);
+            mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
+            this.draw(Laser.renderable, this.wallTextures[0], null, true);
+        }
+
+        //Draw GUI - weapon, health, etc.
+        gl.disable(gl.DEPTH_TEST);
+        this.guiSpriteBatch.draw(gl, this.shaderPrograms[2], scene.guiSprites);
+        gl.enable(gl.DEPTH_TEST);
     }
 
-    draw(renderable, texture, cubemap){
+    draw(renderable, texture, cubemap, dynamic){
         const gl = this.gl,
               shaderProgram = this.shaderPrograms[renderable.shader];
               
         gl.useProgram(shaderProgram.program);
         if(shaderProgram.uniformLocations.modelViewProj != null)
-            gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, this.modelViewMatrix);
+            gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, !!dynamic ? this.dynamicModelViewMatrix : this.modelViewMatrix);
         
         if(shaderProgram.uniformLocations.normalMatrix != null)
             gl.uniformMatrix3fv(shaderProgram.uniformLocations.normalMatrix, false, this.normalMatrix);
@@ -229,6 +227,9 @@ export class Renderer{
             gl.enableVertexAttribArray(shaderProgram.attribLocations.normalPosition);
         }
 
+        if(!!renderable.color)
+            gl.uniform4fv(shaderProgram.attribLocations.color, renderable.color);
+
         gl.activeTexture(gl.TEXTURE0);
         if(!!cubemap){
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap);
@@ -250,48 +251,11 @@ export class Renderer{
 
         this.shaderPrograms = [
             new ShaderProgram(gl, VertexShaders.skybox, FragmentShaders.skybox),
-            new ShaderProgram(gl, VertexShaders.walls, FragmentShaders.walls)
+            new ShaderProgram(gl, VertexShaders.walls, FragmentShaders.walls),
+            new ShaderProgram(gl, VertexShaders.gui, FragmentShaders.gui),
+            new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.gui),
+            new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor)
         ];
-    }
-
-    initializeTextures(wallImages){
-        const gl = this.gl;
-
-        return new Promise((resolve, reject) => {
-            let imgPromises = wallImages
-                .map(path => {
-                    return new Promise((resolve, reject) => {
-                        const tex = gl.createTexture();
-
-                        let image = new Image();
-                        image.onload = () =>{
-                            gl.bindTexture(gl.TEXTURE_2D, tex);
-                            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                            // Uncomment for mipmapping
-                            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);					
-                            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-                            // gl.generateMipmap(gl.TEXTURE_2D);
-                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);					
-                            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-                            gl.bindTexture(gl.TEXTURE_2D, null); 
-                            
-                            gl.bindTexture(gl.TEXTURE_2D, null); 
-                            
-                            resolve(tex);
-                        }
-
-                        image.src = path;
-                    });
-                });
-
-            Promise.all(imgPromises)
-                .then(result => {
-                    console.log(result);
-                    this.wallTextures = result;
-                    resolve();
-                });
-        });
     }
 
     getGLRenderingContext(canvas){

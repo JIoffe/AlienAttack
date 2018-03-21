@@ -6,6 +6,7 @@ const TURN_LEFT = 16
 const TURN_RIGHT = 32
 const JUMP = 64
 const CROUCH = 128
+const FIRE = 256
 
 export class InputListener{
     constructor(document){
@@ -40,6 +41,9 @@ export class InputListener{
                 case 90:
                     this.inputStateFlags |= CROUCH
                     break    
+                case 17:
+                    this.inputStateFlags |= FIRE
+                    break;
                 default:
                     break
             }
@@ -72,7 +76,10 @@ export class InputListener{
                     break
                 case 90:
                     this.inputStateFlags &= ~CROUCH
-                    break                     
+                    break                
+                case 17:
+                    this.inputStateFlags &= ~FIRE
+                    break;                         
                 default:
                     break
             }
@@ -109,5 +116,9 @@ export class InputListener{
 
     get crouch(){
         return !!(this.inputStateFlags & CROUCH)
+    }
+
+    get fire(){
+        return !!(this.inputStateFlags & FIRE)
     }
 }

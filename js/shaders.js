@@ -1,4 +1,13 @@
 const VertexShaders = {
+    notex:
+    `
+    attribute vec4 aVertexPosition;
+    uniform mat4 uModelViewProj;
+
+    void main(void) {
+        gl_Position = uModelViewProj * aVertexPosition;
+    }     
+    `,
     skybox:
         `
         attribute vec4 aVertexPosition;
@@ -10,6 +19,30 @@ const VertexShaders = {
             gl_Position = aVertexPosition;
             vNorm = normalize(uNormalMatrix*aNormal);
         }        
+        `,
+    gui:
+        `
+        attribute vec4 aVertexPosition;
+        attribute vec2 aTexCoords;
+        
+        varying vec2 vTextureCoords;
+        void main(void) {
+            gl_Position = aVertexPosition;
+            vTextureCoords = aTexCoords;
+        }        
+        `,
+    particle:
+        `
+        attribute vec4 aVertexPosition;
+        attribute vec2 aTexCoords;
+        
+        uniform mat4 uModelViewProj;
+
+        varying vec2 vTextureCoords;
+        void main(void) {
+            gl_Position = uModelViewProj * aVertexPosition;
+            vTextureCoords = aTexCoords;
+        }                
         `,
     walls:
         `        
@@ -37,6 +70,27 @@ const VertexShaders = {
 }
 
 const FragmentShaders = {
+    solidcolor:
+    `
+    precision mediump float;
+
+    uniform vec4 uColor;
+
+    void main(void) {                
+        gl_FragColor = vec4(1,0.7,0,1);
+    }  
+    `,
+    gui:
+        `
+        precision mediump float;
+
+        uniform sampler2D uSampler;
+        varying vec2 vTextureCoords;
+
+        void main(void) {                
+            gl_FragColor = texture2D(uSampler, vTextureCoords);
+        }  
+        `,
     skybox:
         `
         precision mediump float;
@@ -93,7 +147,8 @@ class ShaderProgram{
             sampler: gl.getUniformLocation(program, 'uSampler'),
             samplerCube: gl.getUniformLocation(program, 'uSamplerCube'),
             cameraPos: gl.getUniformLocation(program, 'uCameraPos'),
-            shade: gl.getUniformLocation(program, 'uShade')
+            shade: gl.getUniformLocation(program, 'uShade'),
+            color: gl.getUniformLocation(program, 'uColor')
         };
     }
 
