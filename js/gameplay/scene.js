@@ -77,6 +77,12 @@ export class Scene{
             isMoving = true;
         }
 
+            //Turning can be either from keys or mouse
+        if(input.turnLeft)
+            player.rotateY(PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+        else if(input.turnRight)
+            player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+
         if(isMoving){
             //Update gun bobbing effect
             this.guiSprites[0].x = art.gui_sprites[0].x + Math.sin(time.elapsedSeconds * 3.5) * 0.02;
@@ -86,15 +92,11 @@ export class Scene{
             this.guiSprites[0].y = art.gui_sprites[0].y;
         }
 
-        //Turning can be either from keys or mouse
-        if(input.turnLeft)
-            player.rotateY(PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
-        else if(input.turnRight)
-            player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+        if(input.jump)
+            player.velocity[1] = 5;
 
-        // if(input.jump && !this.playerIsAirborne)
-        //     this.playerYVelocity = 5;
-
+        player.update(time);
+        player.clipAgainstMap(map);
         //If gun is firing...
         // if(firedSemiAuto){
         //     if(!input.fire)
@@ -111,12 +113,8 @@ export class Scene{
         // }
 
             
-        //Check player positioning and collition
-        player.sectorPtr = map.determineSector(player.sectorPtr, player.pos[0], player.pos[2]);
-        if(player.sectorPtr >= 0){
-            const floorHeight = map.sectors[player.sectorPtr].getFloorHeight(player.pos[0], player.pos[2]) + PLAYER_HEIGHT;
-            player.pos[1] = floorHeight;
-        }
+
+
         // //Update player collision
         // this.playerSectorIndex = this.determinePlayerSector();
 

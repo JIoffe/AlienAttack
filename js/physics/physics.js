@@ -1,0 +1,1 @@
+export const GRAVITY = 15.0;
