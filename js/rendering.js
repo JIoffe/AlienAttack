@@ -80,7 +80,7 @@ export class Renderer{
         const gl = this.gl;
         gl.clear(gl.DEPTH_BUFFER_BIT);
 
-        aa_math.buildCameraEyeMatrix(this.modelViewMatrix, scene.playerPos, scene.playerRotation);
+        aa_math.buildCameraEyeMatrix(this.modelViewMatrix, scene.player.pos, scene.player.rot);
 
         //The 3x3 inverse transpose of the MV matrix can transform normals
         mat4.transpose(this.invTranspose, this.modelViewMatrix);

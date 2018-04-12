@@ -1,3 +1,4 @@
+//Input bitmask constants
 const MOVE_FORWARD = 1
 const MOVE_BACKWARD = 2
 const STRAFE_LEFT = 4

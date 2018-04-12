@@ -5,9 +5,9 @@
 ///
 
 import * as aa_math from '../math';
-import * as physics from './physics';
 import * as art from '../art';
 import { quat, vec3, mat4 } from 'gl-matrix';
+import { RigidBody } from '../physics/rigid-body';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
@@ -25,14 +25,12 @@ var firedSemiAuto = false;
 
 const LASER_SPEED = 25;
 
+//Projectile Constants
+const MAX_PROJECTILES = 128;
+
 export class Scene{
     constructor(){
-        //TODO - abstract into rigid body
-        this.playerPos = [0,0,0];
-        //Only care about the Y rotation
-        this.playerRotation = 0;
-        this.playerIsAirborne = false;
-        this.playerYVelocity = 0;
+        this.player = new RigidBody();
 
         //Deep copy of sprite definitions in case we need to move things around later
         this.guiSprites = art.gui_sprites.map(s => {
@@ -44,20 +42,19 @@ export class Scene{
             };
         })
 
-        //Lasers are a special kind of particle, enlongated
-        this.laserBlasts = [];
+        this.projectiles = new Array(MAX_PROJECTILES);
     }
 
     setMap(map){
         this.map = map;
-        this.playerPos = map.startingPlayerPos;
-        this.playerRotation = quat.create();
-        quat.fromEuler(this.playerRotation, 0, map.startingPlayerRotation, 0);
+        this.player.pos = map.startingPlayerPos;
+        quat.fromEuler(this.player.rot, 0, map.startingPlayerRotation, 0);
 
-        this.playerSectorIndex = map.startingPlayerSector;
+        this.player.sectorPtr = map.startingPlayerSector;
     }
 
     update(time, input){
+        const player = this.player;
         const map = this.map;
 
         /*
@@ -65,18 +62,18 @@ export class Scene{
         */
         let isMoving = false;
         if(input.moveForward){
-            physics.apply2DThrust(this.playerPos, this.playerRotation, PLAYER_MOVEMENT_SPEED, time);
+            player.moveForward2d(PLAYER_MOVEMENT_SPEED, time);
             isMoving = true;
         }else if(input.moveBackward){
-            physics.apply2DThrust(this.playerPos, this.playerRotation, -PLAYER_MOVEMENT_SPEED, time);
+            player.moveForward2d(-PLAYER_MOVEMENT_SPEED, time);
             isMoving = true;
         }
 
         if(input.strafeLeft){
-            physics.apply2DStrafe(this.playerPos, this.playerRotation, -PLAYER_MOVEMENT_SPEED, time);
+            player.strafe2d(-PLAYER_MOVEMENT_SPEED, time);
             isMoving = true;
         }else if(input.strafeRight){
-            physics.apply2DStrafe(this.playerPos, this.playerRotation, PLAYER_MOVEMENT_SPEED, time);
+            player.strafe2d(PLAYER_MOVEMENT_SPEED, time);
             isMoving = true;
         }
 
@@ -91,12 +88,12 @@ export class Scene{
 
         //Turning can be either from keys or mouse
         if(input.turnLeft)
-            quat.rotateY(this.playerRotation, this.playerRotation, PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+            player.rotateY(PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
         else if(input.turnRight)
-            quat.rotateY(this.playerRotation, this.playerRotation, -PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+            player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
 
-        if(input.jump && !this.playerIsAirborne)
-            this.playerYVelocity = 5;
+        // if(input.jump && !this.playerIsAirborne)
+        //     this.playerYVelocity = 5;
 
         //If gun is firing...
         // if(firedSemiAuto){
@@ -106,26 +103,19 @@ export class Scene{
         //     this.firePrimaryWeapon();
         // }
 
-        if(fireAnimTime <= 0){
-            this.guiSprites[0].img = 0;
-        }else{
-            this.guiSprites[0].img = 3;
-            fireAnimTime -= time.msSinceLastFrame;
-        }
+        // if(fireAnimTime <= 0){
+        //     this.guiSprites[0].img = 0;
+        // }else{
+        //     this.guiSprites[0].img = 3;
+        //     fireAnimTime -= time.msSinceLastFrame;
+        // }
 
-        // if(input.strafeLeft)
-        //     this.playerPos[0] -= playerMovementDelta;
-        // else if(input.strafeRight)
-        //     this.playerPos[0] += playerMovementDelta;
-
-        // else if(input.crouch)
-        //     this.playerPos[1] -= playerMovementDelta;
             
         //Check player positioning and collition
-        this.playerSectorIndex = map.determineSector(this.playerSectorIndex, this.playerPos[0], this.playerPos[2]);
-        if(this.playerSectorIndex >= 0){
-            const floorHeight = map.sectors[this.playerSectorIndex].getFloorHeight(this.playerPos[0], this.playerPos[2]) + PLAYER_HEIGHT;
-            this.playerPos[1] = floorHeight;
+        player.sectorPtr = map.determineSector(player.sectorPtr, player.pos[0], player.pos[2]);
+        if(player.sectorPtr >= 0){
+            const floorHeight = map.sectors[player.sectorPtr].getFloorHeight(player.pos[0], player.pos[2]) + PLAYER_HEIGHT;
+            player.pos[1] = floorHeight;
         }
         // //Update player collision
         // this.playerSectorIndex = this.determinePlayerSector();
