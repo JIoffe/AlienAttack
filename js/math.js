@@ -1,7 +1,9 @@
-import {mat4} from 'gl-matrix'
+import {mat4, vec3} from 'gl-matrix'
 
-//Buffered viewmatrix
-const viewMatrix = mat4.create();
+export const VEC3_TEMP = new Float32Array([0,0,0]);
+export const VEC3_FORWARD = new Float32Array([0, 0, 1]);
+export const VEC3_BACK = new Float32Array([0, 0, -1]);
+export const VEC3_UP = new Float32Array([0,1,0]);
 
 export const Constants = {
     RadToDeg: 57.295779513082320876798154814105,    // 180 / Pi
@@ -49,33 +51,16 @@ export function clampRadians(r){
     return r;
 }
 
-export function buildCameraEyeMatrix(pos, rot){
-    const cosTheta = Math.cos(rot);
-    const sinTheta = Math.cos(rot);
+export function buildCameraEyeMatrix(out, pos, rot){
+    vec3.transformQuat(VEC3_TEMP, VEC3_FORWARD, rot);
 
-    // YAW ROTATION
-    /*
-        cos(a),     0,  sin(a),     0,
-            0,      1,      0,      0,
-        -sin(a),    0,  cos(a),     0,
-            0,      0,      0,      1
-    */
+    VEC3_TEMP[0] += pos[0];
+    VEC3_TEMP[1] += pos[1];
+    VEC3_TEMP[2] += pos[2];
 
-    // Translation 
-    /*
-        1  0  0  0
-        0  1  0  0
-        0  0  1  0
-        x  y  z  1
-    */
-
-    viewMatrix[0] = cosTheta;   viewMatrix[1] = 0; viewMatrix[2] = sinTheta; viewMatrix[3] = 0;
-    viewMatrix[4] = 0;          viewMatrix[5] = 1; viewMatrix[6] = 0; viewMatrix[7] = 0;
-    viewMatrix[8] = -sinTheta;  viewMatrix[9] = 0; viewMatrix[10] = cosTheta; viewMatrix[0] = 0;
-    viewMatrix[0] = -pos[0];    viewMatrix[0] = -pos[1]; viewMatrix[0] = -pos[2]; viewMatrix[0] = 1;
-
-    return viewMatrix;
+    mat4.lookAt(out, pos, VEC3_TEMP, VEC3_UP);
 }
+
 export function buildProjectionMatrix(fovDegrees, w, h, zNear, zFar){
     const fov = fovDegrees * Constants.DegToRad;
     const aspect = w / h;

@@ -5,7 +5,7 @@
 import {BinaryStream} from './fileio';
 import { Sector } from './sector.struct';
 import { Wall } from './wall.struct';
-import { MapData } from './map.struct';
+import { LevelMap } from './map.struct';
 
 const MAP_IMPORT_SCALE = 0.0015;
 const MAP_Z_IMPORT_SCALE = MAP_IMPORT_SCALE * 0.0625;
@@ -74,14 +74,14 @@ export class MapReader{
                         walls[i] = new Wall(stream, MAP_IMPORT_SCALE);
                     }
         
+
+
                     ///
                     // SPRITES - Everything else in the world besides map geometry
                     ///
-    
-                    const mapData = new MapData(url, sectors, walls, playerPos, playerRotation, playerSectorIndex);
 
-                    console.log('Parsed map', mapData);
-                    resolve(mapData);
+                    const map = new LevelMap(url, sectors, walls, playerPos, playerRotation, playerSectorIndex);
+                    resolve(map);
                 }catch(ex){
                     console.error(ex);
                     reject(ex);

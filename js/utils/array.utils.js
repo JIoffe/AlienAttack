@@ -1,3 +1,8 @@
+/**
+ * 
+ * @param {Array} a 
+ * @param {string[]} keys 
+ */
 export function groupBy(a, keys){
     var groups = a.reduce((p, c) => {
         let k = ''; 

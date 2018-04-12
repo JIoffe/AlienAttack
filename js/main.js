@@ -30,14 +30,15 @@ import {MapReader} from './io/mapreader';
             scene = new Scene();
             renderer = new Renderer(canvas);    
 
-            renderer.initialize()
+            renderer
+                .initialize()
                 .then(() => {
                     var mapReader = new MapReader();
                     return mapReader.readUrl('./maps/newboard.map')
                 })                        
-                .then(mapData => {
-                    scene.setMap(mapData);
-                    renderer.setMap(mapData);
+                .then(map => {
+                    scene.setMap(map);
+                    map.prepareRenderableGeometry(renderer.gl);
                     resolve(true);
                 });      
         });

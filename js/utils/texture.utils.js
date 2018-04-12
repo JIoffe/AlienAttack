@@ -31,14 +31,25 @@ export class TextureUtils{
         });
     }
 
-    static initTextures2D(gl, texPaths){
+    static getCubemapPaths(root){
+        return [
+            root + '_right.png',
+            root + '_left.png',
+            root + '_up.png',
+            root + '_down.png',
+            root + '_back.png',
+            root + '_front.png',
+        ];
+    }
+
+    static initTextures2D(gl, texPaths, useBilinearFiltering, generateMipMaps){
         return new Promise((resolve, reject) => {
-            let imgPromises = texPaths.map(path => this.initTexture2D(gl, path));
+            let imgPromises = texPaths.map(path => this.initTexture2D(gl, path, useBilinearFiltering, generateMipMaps));
             Promise.all(imgPromises).then(results => resolve(results));
         });
     }
 
-    static initTexture2D(gl, texPath){
+    static initTexture2D(gl, texPath, useBilinearFiltering, generateMipMaps){
         return new Promise((resolve, reject) => {
             const tex = gl.createTexture(),
                   image = new Image();
@@ -46,16 +57,23 @@ export class TextureUtils{
             image.onload = () => {
                 gl.bindTexture(gl.TEXTURE_2D, tex);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.getMirroredImageData(image));
-                // Uncomment for mipmapping
-                // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);					
-                // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-                // gl.generateMipmap(gl.TEXTURE_2D);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);					
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-                gl.bindTexture(gl.TEXTURE_2D, null); 
+
+                let magFilter, minFilter;
+                if(!!useBilinearFiltering){
+                    magFilter = gl.LINEAR;
+                    minFilter = !!generateMipMaps ? gl.LINEAR_MIPMAP_NEAREST : gl.LINEAR;
+                }else{
+                    magFilter = gl.NEAREST;
+                    minFilter = gl.NEAREST;
+                }
+
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, magFilter);					
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
+
+                if(generateMipMaps)
+                    gl.generateMipmap(gl.TEXTURE_2D);
                 
-                gl.bindTexture(gl.TEXTURE_2D, null); 
-                
+                gl.bindTexture(gl.TEXTURE_2D, null);                 
                 resolve(tex);
             };
 
@@ -81,7 +99,6 @@ export class TextureUtils{
         ctx.drawImage(image, 0, 0);
 
         let id = ctx.getImageData(0, 0, w, h);
-        console.log(id);
         return id;
     }
 }

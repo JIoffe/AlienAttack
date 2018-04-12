@@ -1,13 +1,13 @@
 const VertexShaders = {
     notex:
-    `
-    attribute vec4 aVertexPosition;
-    uniform mat4 uModelViewProj;
+        `
+        attribute vec4 aVertexPosition;
+        uniform mat4 uModelViewProj;
 
-    void main(void) {
-        gl_Position = uModelViewProj * aVertexPosition;
-    }     
-    `,
+        void main(void) {
+            gl_Position = uModelViewProj * aVertexPosition;
+        }     
+        `,
     skybox:
         `
         attribute vec4 aVertexPosition;
@@ -48,23 +48,19 @@ const VertexShaders = {
         `        
         attribute vec4 aVertexPosition;
         attribute vec2 aTexCoords;
-        attribute vec3 aNormal;
+        attribute float aShade;
 
         uniform mat4 uModelViewProj;
-        uniform float uShade;
 
         varying vec2 vTextureCoords;
-        varying vec3 vNorm;
         varying float vShade;
-
         varying float depth;
 
         void main() {
-            vNorm = normalize(aNormal);
-            vShade = 1.0 - uShade / 20.0;
             vTextureCoords = aTexCoords;
             gl_Position = uModelViewProj * aVertexPosition;
             depth = gl_Position.w;
+            vShade = aShade;
         }
         `    
 }
@@ -108,15 +104,11 @@ const FragmentShaders = {
         uniform sampler2D uSampler;
 
         varying vec2 vTextureCoords;
-        varying vec3 vNorm;
         varying float vShade;
-
         varying float depth;
 
         void main() {
-            //vec3 norm = normalize(vNorm);
-            //gl_FragColor = vec4(abs(norm.x), 0.0, abs(norm.z), 1.0);
-            float lighting = max(1.0 - depth / 25.0, 0.25)  * vShade;
+            float lighting = max(1.0 - depth / 25.0, 0.25) * vShade;
             vec4 diffuse = texture2D(uSampler, vTextureCoords);
             diffuse.rgb *= lighting;
 
@@ -136,7 +128,8 @@ class ShaderProgram{
         this.attribLocations = {
             vertexPosition: gl.getAttribLocation(program, 'aVertexPosition'),
             texPosition: gl.getAttribLocation(program, 'aTexCoords'),
-            normalPosition: gl.getAttribLocation(program, 'aNormal')
+            normalPosition: gl.getAttribLocation(program, 'aNormal'),
+            shade: gl.getAttribLocation(program, 'aShade')
         };
 
         this.uniformLocations = {
@@ -147,7 +140,6 @@ class ShaderProgram{
             sampler: gl.getUniformLocation(program, 'uSampler'),
             samplerCube: gl.getUniformLocation(program, 'uSamplerCube'),
             cameraPos: gl.getUniformLocation(program, 'uCameraPos'),
-            shade: gl.getUniformLocation(program, 'uShade'),
             color: gl.getUniformLocation(program, 'uColor')
         };
     }
