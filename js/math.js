@@ -2,6 +2,7 @@ import {mat4, vec3} from 'gl-matrix'
 
 export const VEC3_TEMP = new Float32Array([0,0,0]);
 export const VEC3_FORWARD = new Float32Array([0, 0, 1]);
+export const VEC3_RIGHT = new Float32Array([1, 0, 0]);
 export const VEC3_BACK = new Float32Array([0, 0, -1]);
 export const VEC3_UP = new Float32Array([0,1,0]);
 

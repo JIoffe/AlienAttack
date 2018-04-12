@@ -60,12 +60,23 @@ export class Scene{
     update(time, input){
         const map = this.map;
 
+        /*
+            PLAYER MOVEMENT - Forward, Back, Strafe
+        */
         let isMoving = false;
         if(input.moveForward){
             physics.apply2DThrust(this.playerPos, this.playerRotation, PLAYER_MOVEMENT_SPEED, time);
             isMoving = true;
         }else if(input.moveBackward){
             physics.apply2DThrust(this.playerPos, this.playerRotation, -PLAYER_MOVEMENT_SPEED, time);
+            isMoving = true;
+        }
+
+        if(input.strafeLeft){
+            physics.apply2DStrafe(this.playerPos, this.playerRotation, -PLAYER_MOVEMENT_SPEED, time);
+            isMoving = true;
+        }else if(input.strafeRight){
+            physics.apply2DStrafe(this.playerPos, this.playerRotation, PLAYER_MOVEMENT_SPEED, time);
             isMoving = true;
         }
 
