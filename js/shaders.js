@@ -61,9 +61,9 @@ const VertexShaders = {
             gl_Position = uModelViewProj * aVertexPosition;
 
             //Approximate eye v from transformed position
-            vec3 eye = normalize(gl_Position.xyz);
+            vec3 eye = normalize(aVertexPosition.xyz);
 
-            vNormal = normalize(uNormalMatrix*aNormal);
+            vNormal = normalize(uNormalMatrix * aNormal);
             vReflect = reflect(eye, vNormal);
 
             vTextureCoords = aTexCoords;
@@ -136,7 +136,12 @@ const FragmentShaders = {
         void main(void) {                
             vec4 diffuse = texture2D(uSampler, vTextureCoords);
             vec4 reflection = textureCube(uSamplerCube, normalize(vReflect));
-            gl_FragColor = mix(diffuse, reflection, diffuse.a);
+
+            float s = diffuse.a;
+            if(s < 0.25)
+                s = 0.0;
+
+            gl_FragColor = mix(diffuse, reflection, s);
 
             gl_FragColor.a = 1.0;
         }  

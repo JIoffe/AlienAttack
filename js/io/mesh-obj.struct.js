@@ -43,7 +43,7 @@ export class MeshObject{
             i = (group.indices[1] - 1) * 2;
             texCoords.push(this.texCoords[i], this.texCoords[i+1]);
 
-            i = group.indices[2] * 3;
+            i = (group.indices[2] - 1) * 3;
             normals.push(this.normals[i], this.normals[i+1], this.normals[i+2]);
 
             indices.push(indices.length);
