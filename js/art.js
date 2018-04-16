@@ -23,4 +23,13 @@ export const gui = {
     def: {"images":{"raygun_rest.png":{"name":"raygun_rest.png","xStart":0,"xEnd":0.125,"yStart":0,"yEnd":0.125},"ammo.png":{"name":"ammo.png","xStart":0.126953125,"xEnd":0.251953125,"yStart":0,"yEnd":0.125},"health.png":{"name":"health.png","xStart":0.25390625,"xEnd":0.37890625,"yStart":0,"yEnd":0.125},"raygun_firing.png":{"name":"raygun_firing.png","xStart":0.380859375,"xEnd":0.505859375,"yStart":0,"yEnd":0.125}}}
 }
 
+export const mesh_texture_list = [
+    '/img/weapons/blaster-pistol.png'
+];
+
+export const mesh_list = [
+    '/models/blaster-pistol.obj'
+];
+
 export const skyBox = '/img/skybox/space';
+export const envMap = '/img/env/reflect';

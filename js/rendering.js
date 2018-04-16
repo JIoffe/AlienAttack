@@ -1,4 +1,4 @@
-import {mat3, mat4, vec4, vec3} from 'gl-matrix'
+import {mat3, mat4, vec4, vec3, quat} from 'gl-matrix'
 import {VertexShaders, FragmentShaders, ShaderProgram} from './shaders';
 import * as aa_math from './math';
 import * as art from './art';
@@ -6,6 +6,7 @@ import { Skybox } from './geometry/skybox';
 import { TextureUtils } from './utils/texture.utils';
 import { SpriteBatch } from './geometry/sprite-batch';
 import { Laser } from './geometry/fx/laser';
+import { ObjReader } from './io/obj-reader';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -35,6 +36,9 @@ export class Renderer{
         
         //Initialize static buffers - TODO will be to batch
         Laser.initializeGeometry(this.gl);
+        this.projectileGeometries = [
+          Laser.renderable  
+        ];
 
         //Sprite Batch for GUI elements - not that many really
         this.guiSpriteBatch = new SpriteBatch(this.gl, 32);
@@ -54,11 +58,27 @@ export class Renderer{
         return new Promise((resolve, reject) => {
             this.initializeShaders();
 
+            const promises = [
+                this.initializeTextures(),
+                this.initializeModels()
+            ];
+
+            Promise.all(promises)
+                .then(() => resolve());
+        });
+    }
+
+    initializeTextures(){
+        return new Promise((resolve, reject) => {
             TextureUtils
                 .initCubemap(this.gl, TextureUtils.getCubemapPaths(art.skyBox))
                 .then(skyboxTex => {
                     this.skyboxTex = skyboxTex;
 
+                    return TextureUtils.initCubemap(this.gl, TextureUtils.getCubemapPaths(art.envMap));
+                })
+                .then(envTex => {
+                    this.envTex = envTex;
                     return TextureUtils.initTextures2D(this.gl, art.wallTextures, true, true);
                 })
                 .then(textures => {
@@ -67,7 +87,24 @@ export class Renderer{
 
                     return this.guiSpriteBatch.setSpriteSheet(this.gl, art.gui);
                 })
-                .then(() => resolve());
+                .then(() => TextureUtils.initTextures2D(this.gl, art.mesh_texture_list, true, true))
+                .then(meshTextures => {
+                    this.meshTextures = meshTextures;
+                    resolve();
+                });
+        });
+    }
+
+    initializeModels(){
+        return new Promise((resolve, reject) => {
+            const objReader = new ObjReader();
+            
+            const promises = art.mesh_list.map(path => objReader.readUrl(this.gl, path));
+
+            Promise.all(promises).then(meshes => {
+                this.meshes = meshes;
+                resolve();
+            });
         });
     }
 
@@ -76,7 +113,7 @@ export class Renderer{
             && (!!this.shaderPrograms && this.shaderPrograms.every(p => p.isReady));
     }
 
-    renderFrame(scene){
+    renderFrame(scene, time){
         const gl = this.gl;
         gl.clear(gl.DEPTH_BUFFER_BIT);
 
@@ -94,19 +131,48 @@ export class Renderer{
         this.skybox.draw(gl, this.shaderPrograms[0], this.skyboxTex, this.modelViewMatrix, this.normalMatrix);
         scene.map.draw(gl, this.modelViewMatrix, this.shaderPrograms[1], this.wallTextures);
 
+        if(scene.nProjectiles > 0){
+            const shaderProgram = this.shaderPrograms[4];
+            gl.useProgram(shaderProgram.program);
 
-        //Draw sprites and effects
-        // for(let i = scene.laserBlasts.length - 1; i >= 0; --i){
-        //     let lb = scene.laserBlasts[i];
-        //     mat4.fromRotationTranslation(this.dynamicModelViewMatrix, lb.rot, lb.pos);
-        //     mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
-        //     this.draw(Laser.renderable, this.wallTextures[0], null, true);
-        // }
+            const renderable = this.projectileGeometries[scene.projectiles[0].type];
+            gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.vertices);
+            gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
 
+            gl.uniform4fv(shaderProgram.attribLocations.color, renderable.color);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderable.buffers.indices);
+            
+            for(let i = 0; i < scene.nProjectiles; ++i){
+                let p = scene.projectiles[i];
+
+                mat4.fromRotationTranslation(this.dynamicModelViewMatrix, p.rot, p.pos);
+                mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
+                gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, this.dynamicModelViewMatrix);
+
+                gl.drawElements(gl.TRIANGLES, renderable.indexCount, gl.UNSIGNED_SHORT, 0)
+            }
+        }
+
+        //Draw FPS weapon
+        {
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            let p = this.shaderPrograms[5];
+            gl.useProgram(p.program);
+
+            mat4.fromRotationTranslation(this.dynamicModelViewMatrix, scene.weaponRecoil, scene.weaponOffset);
+            mat4.multiply(this.dynamicModelViewMatrix, this.projectionMatrix, this.dynamicModelViewMatrix);
+
+            quat.multiply(aa_math.QUAT_TEMP, scene.weaponRecoil, scene.player.rot);
+            mat4.fromQuat(this.invTranspose, aa_math.QUAT_TEMP);
+            mat3.fromMat4(this.normalMatrix, this.invTranspose);
+
+            this.meshes[0].draw(gl, p, this.meshTextures[0], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
+        }
         //Draw GUI - weapon, health, etc.
-        gl.disable(gl.DEPTH_TEST);
-        this.guiSpriteBatch.draw(gl, this.shaderPrograms[2], scene.guiSprites);
-        gl.enable(gl.DEPTH_TEST);
+        // gl.disable(gl.DEPTH_TEST);
+        // this.guiSpriteBatch.draw(gl, this.shaderPrograms[2], scene.guiSprites);
+        // gl.enable(gl.DEPTH_TEST);
     }
     
     //Utility Methods
@@ -118,7 +184,8 @@ export class Renderer{
             new ShaderProgram(gl, VertexShaders.walls, FragmentShaders.walls),
             new ShaderProgram(gl, VertexShaders.gui, FragmentShaders.gui),
             new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.gui),
-            new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor)
+            new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor),
+            new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective)
         ];
     }
 

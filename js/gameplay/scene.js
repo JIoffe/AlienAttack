@@ -8,6 +8,7 @@ import * as aa_math from '../math';
 import * as art from '../art';
 import { quat, vec3, mat4 } from 'gl-matrix';
 import { RigidBody } from '../physics/rigid-body';
+import { Projectile, ProjectileTypes } from './projectile';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
@@ -43,6 +44,9 @@ export class Scene{
         })
 
         this.projectiles = new Array(MAX_PROJECTILES);
+        this.nProjectiles = 0;
+        this.weaponOffset = vec3.create();
+        this.weaponRecoil = quat.create();
     }
 
     setMap(map){
@@ -83,108 +87,74 @@ export class Scene{
         else if(input.turnRight)
             player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
 
+        // if(isMoving){
+        //     //Update gun bobbing effect
+        //     this.guiSprites[0].x = art.gui_sprites[0].x + Math.sin(time.elapsedSeconds * 3.5) * 0.02;
+        //     this.guiSprites[0].y = art.gui_sprites[0].y + Math.abs(Math.cos(time.elapsedSeconds * 2.5)) * 0.05;
+        // }else{
+        //     this.guiSprites[0].x = art.gui_sprites[0].x;
+        //     this.guiSprites[0].y = art.gui_sprites[0].y;
+        // }
+
+        this.weaponOffset[0] = 1.6;
+        this.weaponOffset[1] = -2;
+        this.weaponOffset[2] = -4.2;
         if(isMoving){
-            //Update gun bobbing effect
-            this.guiSprites[0].x = art.gui_sprites[0].x + Math.sin(time.elapsedSeconds * 3.5) * 0.02;
-            this.guiSprites[0].y = art.gui_sprites[0].y + Math.abs(Math.cos(time.elapsedSeconds * 2.5)) * 0.05;
-        }else{
-            this.guiSprites[0].x = art.gui_sprites[0].x;
-            this.guiSprites[0].y = art.gui_sprites[0].y;
+            this.weaponOffset[0] += Math.sin(time.elapsedSeconds * 3.5) * 0.2;
+            this.weaponOffset[1] += Math.abs(Math.cos(time.elapsedSeconds * 4.5)) * 0.35;
         }
 
         if(input.jump)
             player.velocity[1] = 5;
 
+        if(input.semiAutoFire){
+            this.firePrimaryWeapon();
+        }
+
         player.update(time);
         player.clipAgainstMap(map);
-        //If gun is firing...
-        // if(firedSemiAuto){
-        //     if(!input.fire)
-        //         firedSemiAuto = false;
-        // }else if(input.fire && fireAnimTime <= 0){
-        //     this.firePrimaryWeapon();
-        // }
 
-        // if(fireAnimTime <= 0){
-        //     this.guiSprites[0].img = 0;
-        // }else{
-        //     this.guiSprites[0].img = 3;
-        //     fireAnimTime -= time.msSinceLastFrame;
-        // }
+        //Recover from recoil
+        quat.slerp(this.weaponRecoil, this.weaponRecoil, aa_math.QUAT_IDENTITY, 4 * time.secondsSinceLastFrame);
 
-            
-
-
-        // //Update player collision
-        // this.playerSectorIndex = this.determinePlayerSector();
-
-        // if(this.playerSectorIndex >= 0){
-        //     //Only apply gravity if we're not floating in space...
-        //     this.playerYVelocity -= GRAVITY * time.secondsSinceLastFrame;
-        //     this.playerPos[1] += this.playerYVelocity * time.secondsSinceLastFrame;
-
-        //     let floorHeight = this.mapData.sectors[this.playerSectorIndex].getFloorHeight(this.playerPos[0], this.playerPos[2]) + PLAYER_HEIGHT;
-        //     if(this.playerPos[1] <= floorHeight){
-        //         this.playerIsAirborne = false;
-        //         this.playerPos[1] = floorHeight;
-        //     }else{
-        //         let ceilingHeight = this.mapData.sectors[this.playerSectorIndex].getCeilingHeight(this.playerPos[0], this.playerPos[2]) - PLAYER_HEIGHT_PADDING;
-        //         if(this.playerPos[1] > ceilingHeight){
-        //             this.playerYVelocity = 0;
-        //             this.playerPos[1] = ceilingHeight;
-        //         }
-
-        //         this.playerIsAirborne = true;
-        //     }
-        // }
-
-        // //update player projectiles
-        // const laserDisplacement = LASER_SPEED * time.secondsSinceLastFrame;
-        // for(let i = this.laserBlasts.length - 1; i >= 0; --i){
-        //     const lb = this.laserBlasts[i];
-        //     lb.pos[0] += lb.forward[0] * laserDisplacement;
-        //     lb.pos[1] += lb.forward[1] * laserDisplacement;
-        //     lb.pos[2] += lb.forward[2] * laserDisplacement;
-
-        //     if(this.collidesWithMap(lb.sectorIndex, lb.pos[0], lb.pos[2])){
-        //         //console.log('KABOOM!');
-        //     }
-        // }
+        //Update flying dangerous stuff
+        for(let i = 0; i < this.nProjectiles; ++i){
+            this.projectiles[i].update(time);
+        }
     }
 
     firePrimaryWeapon(){
-        let playerMatrix = mat4.create();
-        let playerQuat = quat.create();
-        quat.setAxisAngle(playerQuat, [0,1,0], this.playerRotation);
-        mat4.fromRotationTranslation(playerMatrix, playerQuat, this.playerPos);
+        if(this.nProjectiles >= MAX_PROJECTILES){
+            return;
+        }
 
-        let targetPosition = [0,0,-10];
-        vec3.transformMat4(targetPosition, targetPosition, playerMatrix);
+        quat.fromEuler(this.weaponRecoil, 45, 0, 0);
 
-        let startingPos = [0.12,-0.12,-1.1];
-        vec3.transformMat4(startingPos, startingPos, playerMatrix);
+        //TODO - avoid allocations here
 
-        
-        let playerNorm = [
-            -Math.sin(this.playerRotation),
-            0,
-            -Math.cos(this.playerRotation)
-        ];
+        //Our view of the primary weapon is offset,
+        //so we have to compensate to make it appear that 
+        //projectiles are going towards where the user is looking...
 
-        let targetDirection = vec3.create();
-        vec3.sub(targetDirection, targetPosition, startingPos);
-        vec3.normalize(targetDirection, targetDirection);
+        //Target 10 units in front of us
+        const targetPosition = new Float32Array([0,0,-10]);
+        const startingPosition = vec3.create();
 
-        let rot = quat.create();
-        quat.setAxisAngle(rot, [0,1,0], this.playerRotation);
+        startingPosition[0] = -this.weaponOffset[0];
+        startingPosition[1] = this.weaponOffset[1] + 1.2;
+        startingPosition[2] = -this.weaponOffset[2];
 
-        this.laserBlasts.push({
-            pos: startingPos,
-            rot: rot,
-            forward: targetDirection,
-            sectorIndex: this.playerSectorIndex
-        });
-        fireAnimTime = FIRE_ANIM_DELAY;
-        firedSemiAuto = true;
+        vec3.transformQuat(targetPosition, targetPosition, this.player.rot);
+        vec3.transformQuat(startingPosition, startingPosition, this.player.rot);
+
+        vec3.add(targetPosition, targetPosition, this.player.pos);
+        vec3.add(startingPosition, startingPosition, this.player.pos);
+
+        const projectile = new Projectile(ProjectileTypes.laser, LASER_SPEED);
+        vec3.copy(projectile.pos, startingPosition);
+        quat.copy(projectile.rot, this.player.rot);
+        //        aa_math.lookAtRotation(projectile.rot, startingPosition, targetPosition);
+
+        this.projectiles[this.nProjectiles++] = projectile;
     }
 }

@@ -1,10 +1,20 @@
-import {mat4, vec3} from 'gl-matrix'
+import {mat4, vec3, quat, mat3} from 'gl-matrix'
 
+export const MAT3_TEMP = mat3.create();
+export const MAT4_TEMP = mat4.create();
 export const VEC3_TEMP = new Float32Array([0,0,0]);
 export const VEC3_FORWARD = new Float32Array([0, 0, 1]);
 export const VEC3_RIGHT = new Float32Array([1, 0, 0]);
 export const VEC3_BACK = new Float32Array([0, 0, -1]);
 export const VEC3_UP = new Float32Array([0,1,0]);
+
+export const QUAT_IDENTITY = (() => {
+    let q = quat.create();
+    quat.identity(q);
+    return q;
+})();
+
+export const QUAT_TEMP = quat.create();
 
 export const Constants = {
     RadToDeg: 57.295779513082320876798154814105,    // 180 / Pi
@@ -70,4 +80,11 @@ export function buildProjectionMatrix(fovDegrees, w, h, zNear, zFar){
     mat4.perspective(projectionMatrix, fov, aspect, zNear, zFar);
 
     return projectionMatrix;
+}
+
+
+export function lookAtRotation(out, a, b){
+    mat4.targetTo(MAT4_TEMP, a, b, VEC3_UP);
+    mat3.fromMat4(MAT3_TEMP, MAT4_TEMP);
+    quat.fromMat3(out, MAT3_TEMP);
 }

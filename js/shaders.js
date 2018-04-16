@@ -44,6 +44,31 @@ const VertexShaders = {
             vTextureCoords = aTexCoords;
         }                
         `,
+    texturedWithNormals:
+        `
+        attribute vec4 aVertexPosition;
+        attribute vec2 aTexCoords;
+        attribute vec3 aNormal;
+        
+        uniform mat4 uModelViewProj;
+        uniform mat3 uNormalMatrix;
+
+        varying vec2 vTextureCoords;
+        varying vec3 vNormal;
+        varying vec3 vReflect;
+        
+        void main(void) {
+            gl_Position = uModelViewProj * aVertexPosition;
+
+            //Approximate eye v from transformed position
+            vec3 eye = normalize(gl_Position.xyz);
+
+            vNormal = normalize(uNormalMatrix*aNormal);
+            vReflect = reflect(eye, vNormal);
+
+            vTextureCoords = aTexCoords;
+        }                
+        `,
     walls:
         `        
         attribute vec4 aVertexPosition;
@@ -96,6 +121,25 @@ const FragmentShaders = {
         void main(void) {                
             gl_FragColor = textureCube(uSamplerCube, normalize(vNorm));
         }        
+        `,
+    reflective:
+        `
+        precision mediump float;
+
+        uniform sampler2D uSampler;
+        uniform samplerCube uSamplerCube;
+
+        varying vec3 vNormal;
+        varying vec3 vReflect;
+        varying vec2 vTextureCoords;
+
+        void main(void) {                
+            vec4 diffuse = texture2D(uSampler, vTextureCoords);
+            vec4 reflection = textureCube(uSamplerCube, normalize(vReflect));
+            gl_FragColor = mix(diffuse, reflection, diffuse.a);
+
+            gl_FragColor.a = 1.0;
+        }  
         `,
     walls:
         `

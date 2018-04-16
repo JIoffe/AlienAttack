@@ -49,6 +49,6 @@ import {MapReader} from './io/mapreader';
 
         time.advance();
         scene.update(time, input)
-        renderer.renderFrame(scene);
+        renderer.renderFrame(scene, time);
     }
 })(document)

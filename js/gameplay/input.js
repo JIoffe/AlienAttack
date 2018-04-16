@@ -9,6 +9,8 @@ const JUMP = 64
 const CROUCH = 128
 const FIRE = 256
 
+var semiAutoFire = false;
+
 export class InputListener{
     constructor(document){
         this.inputStateFlags = 0;
@@ -43,6 +45,7 @@ export class InputListener{
                     this.inputStateFlags |= CROUCH
                     break    
                 case 17:
+                    semiAutoFire = true;
                     this.inputStateFlags |= FIRE
                     break;
                 default:
@@ -85,6 +88,18 @@ export class InputListener{
                     break
             }
         });        
+    }
+
+    /**
+     * Returns true on the first frame the user engages fire
+     */
+    get semiAutoFire(){
+        if(semiAutoFire == true){
+            semiAutoFire = false;
+            return true;
+        }
+        
+        return false;
     }
 
     get moveForward(){

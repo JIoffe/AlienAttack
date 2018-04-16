@@ -4,14 +4,14 @@ var renderable;
 
 export class Laser{
     static initializeGeometry(gl){
-        const laserWidth = 0.03,
+        const laserWidth = 0.1,
             laserLength = 1.2;
     
         let vertices = [-laserWidth, laserWidth, 0.0,
                         laserWidth, laserWidth, 0.0,
                         laserWidth, -laserWidth, 0.0,
                         -laserWidth, -laserWidth, 0.0,
-                        0, 0, laserLength];
+                        0, 0, -laserLength];
 
 
         let indices = [
@@ -23,8 +23,6 @@ export class Laser{
         ];
 
         renderable = new Renderable(gl, vertices, indices, null, null);
-        renderable.shader = 4;
-
         renderable.color = [1.0, 0.8, 0.0, 1.0];
     }
 
