@@ -39,6 +39,8 @@ import {MapReader} from './io/mapreader';
                 .then(map => {
                     scene.setMap(map);
                     map.prepareRenderableGeometry(renderer.gl);
+                    scene.particleSystem.initialize(renderer.gl);
+                    
                     resolve(true);
                 });      
         });

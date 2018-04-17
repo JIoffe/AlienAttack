@@ -11,7 +11,12 @@ export class Projectile extends RigidBody{
         this.speed = speed;
     }
 
-    update(time){
+    update(time, map){
         this.moveForward2d(this.speed, time);
+
+        //If Collides with map
+        if(this.collidesWithMap(map)){
+            this.kill();
+        }
     }
 }

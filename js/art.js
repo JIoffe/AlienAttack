@@ -7,6 +7,11 @@ export const wallTextures = [
     '/img/glass1.png'
 ];
 
+//TODO - consider batching particle textures if there are too many of them
+export const particleTextures = [
+    '/img/particles/ember.png'
+];
+
 //GUI element default placements/sizes
 export const gui_sprites = [
     {

@@ -7,6 +7,7 @@ import { TextureUtils } from './utils/texture.utils';
 import { SpriteBatch } from './geometry/sprite-batch';
 import { Laser } from './geometry/fx/laser';
 import { ObjReader } from './io/obj-reader';
+import { ParticleSystem } from './physics/particle-system';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -90,6 +91,12 @@ export class Renderer{
                 .then(() => TextureUtils.initTextures2D(this.gl, art.mesh_texture_list, true, true))
                 .then(meshTextures => {
                     this.meshTextures = meshTextures;
+
+                    return TextureUtils.initTextures2D(this.gl, art.particleTextures, true, true);
+                })
+                .then(particleTextures => {
+                    this.particleTextures = particleTextures;
+
                     resolve();
                 });
         });
@@ -154,6 +161,13 @@ export class Renderer{
             }
         }
 
+        gl.depthMask(false);
+        //Shinies and other effects
+        gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+        scene.particleSystem.draw(gl, this.shaderPrograms[3], this.particleTextures[0], this.modelViewMatrix);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.depthMask(true);
+
         //Draw FPS weapon
         {
             gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -183,7 +197,7 @@ export class Renderer{
             new ShaderProgram(gl, VertexShaders.skybox, FragmentShaders.skybox),
             new ShaderProgram(gl, VertexShaders.walls, FragmentShaders.walls),
             new ShaderProgram(gl, VertexShaders.gui, FragmentShaders.gui),
-            new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.gui),
+            new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.particle),
             new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor),
             new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective)
         ];

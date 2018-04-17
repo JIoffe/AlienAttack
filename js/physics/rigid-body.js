@@ -4,14 +4,16 @@ import * as aa_math from '../math';
 import * as physics from './physics';
 
 //Rigidbody state constants
-const IS_AIRBORNE = 1;
+const IS_ALIVE = 1;
+const IS_AIRBORNE = 2;
+
 
 export class RigidBody{
     constructor(){
         this.pos = vec3.create();
         this.rot = quat.create();
         this.velocity = vec3.create();
-        this.state = 0;
+        this.state = IS_ALIVE;
         this.sectorPtr = 0;
     }    
 
@@ -21,6 +23,11 @@ export class RigidBody{
         this.pos[2] += this.velocity[2] * time.secondsSinceLastFrame;
 
         this.velocity[1] -= time.secondsSinceLastFrame * physics.GRAVITY;
+    }
+
+    get forward(){
+        vec3.transformQuat(aa_math.VEC3_TEMP, aa_math.VEC3_FORWARD, this.rot);
+        return aa_math.VEC3_TEMP;
     }
 
     /**
@@ -72,5 +79,23 @@ export class RigidBody{
                 this.state &= ~IS_AIRBORNE;
             }
         }
+    }
+
+    collidesWithMap(map){
+        this.sectorPtr = map.determineSector(this.sectorPtr, this.pos[0], this.pos[2]);
+
+        if(this.sectorPtr === -1)
+            return true;
+
+        const floorHeight = map.sectors[this.sectorPtr].getFloorHeight(this.pos[0], this.pos[2]);
+        return floorHeight >= this.pos[1];
+    }
+
+    kill(){
+        this.state &= ~IS_ALIVE;
+    }
+
+    get isAlive(){
+        return !!(this.state & IS_ALIVE);
     }
 }

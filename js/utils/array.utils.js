@@ -13,3 +13,12 @@ export function groupBy(a, keys){
  
     return Object.entries(groups).map(e => groups[e[0]]);
 }
+
+export function swapDeadElements(array, index, count){
+    let end = count - 1;
+    if(index !== end){
+        const temp = array[index];
+        array[index] = array[end];
+        array[end] = temp;
+    }
+}
