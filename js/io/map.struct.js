@@ -5,7 +5,7 @@ import * as aa_math from "../math";
  * Encapsulates the rendering and collision detection within a Build engine map
  */
 
-const buffers = new Array(4);
+const buffers = new Array(3);
 var indexCount = 0;
 
 export class LevelMap{
@@ -30,21 +30,16 @@ export class LevelMap{
      * @param {GLint[]} textures 
      */
     draw(gl, modelViewMatrix, shaderProgram, textures){
-        gl.enableVertexAttribArray(2);
-
         gl.useProgram(shaderProgram.program);
         gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, modelViewMatrix);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers[0]);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 4, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers[1]);
         gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[2]);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.shade, 1, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[3]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[2]);
 
         //Loops through all the sectors,
         //this is a placeholder to allow for PVS ellimination
@@ -78,7 +73,6 @@ export class LevelMap{
         }
 
         //Fin
-        gl.disableVertexAttribArray(2);
     }
 
     /*

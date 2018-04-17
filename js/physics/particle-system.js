@@ -37,10 +37,10 @@ export class ParticleSystem{
         //Update the simulation and draw at once
         for(let i = this.nParticles - 1; i >= 0; --i){
             const particle = this.particles[i];
-            // if(particle.life <= 0){
-            //     array_utils.swapDeadElements(this.particles, i, this.nParticles--);
-            //     continue;
-            // }
+            if(particle.life <= 0){
+                array_utils.swapDeadElements(this.particles, i, this.nParticles--);
+                continue;
+            }
             
             const j = i * 4;
 

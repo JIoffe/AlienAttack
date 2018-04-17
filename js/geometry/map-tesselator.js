@@ -8,18 +8,17 @@ export class MapTesselator{
         const indices = [],
             vertices = [],
             texCoords = [],
-            shade = [],
             normals= [];
 
         map.sectors.forEach(sector => {
             sector.indices = new Int32Array(4);
             sector.indices[1] = indices.length;
-            MapTesselator.buildHorizontalGeometry(gl, map.walls, sector, true, vertices, texCoords, normals, shade, indices);
+            MapTesselator.buildHorizontalGeometry(gl, map.walls, sector, true, vertices, texCoords, normals, indices);
             sector.indices[0] = indices.length - sector.indices[1];
             sector.indices[1] *= SIZEOF_SHORT;
 
             sector.indices[3] = indices.length;
-            MapTesselator.buildHorizontalGeometry(gl, map.walls, sector, false, vertices, texCoords, normals, shade, indices);
+            MapTesselator.buildHorizontalGeometry(gl, map.walls, sector, false, vertices, texCoords, normals, indices);
             sector.indices[2] = indices.length - sector.indices[3];
             sector.indices[3] *= SIZEOF_SHORT;
 
@@ -38,9 +37,9 @@ export class MapTesselator{
                     const nextWall = map.walls[wall.point2];
 
                     if(wall.nextsector === -1){
-                        MapTesselator.buildOuterWall(wall, sector, nextWall, vertices, texCoords, normals, shade, indices);
+                        MapTesselator.buildOuterWall(wall, sector, nextWall, vertices, texCoords, normals, indices);
                     }else{
-                        MapTesselator.buildInnerSectorWall(wall, sector, map.sectors[wall.nextsector], nextWall, vertices, texCoords, normals, shade, indices);
+                        MapTesselator.buildInnerSectorWall(wall, sector, map.sectors[wall.nextsector], nextWall, vertices, texCoords, normals, indices);
                     }   
                 })
                 sector.wallData[count] = indices.length - sector.wallData[offset];
@@ -57,20 +56,16 @@ export class MapTesselator{
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 
         buffers[2] = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[2]);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(shade), gl.STATIC_DRAW);
-
-        buffers[3] = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[3]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[2]);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
         return indices.length;
     }
 
-    static buildHorizontalGeometry(gl, walls, sector, isFloor, vertices, texCoords, normals, shade, indices) {
+    static buildHorizontalGeometry(gl, walls, sector, isFloor, vertices, texCoords, normals, indices) {
         //Needed to correct winding later on
         const indexStart = indices.length;
-        let vertexPtr = vertices.length / 3;
+        let vertexPtr = vertices.length / 4;
 
         const wallLoops = sector.getWallLoops(walls);
 
@@ -92,20 +87,20 @@ export class MapTesselator{
         const texPixelWidth = 64,
             pixelOffset = 0.015625;
 
+        let shadeValue = MapTesselator.transformShadeValue(isFloor ? sector.floorshade : sector.ceilingshade);
+
         for(let i = 0; i < points.length; i += 2){
             let x = points[i],
                 z = points[i+1],
                 y = isFloor ? sector.getFloorHeight(x, z) : sector.getCeilingHeight(x, z);
 
-            vertices.push(x, y, z);
+            vertices.push(x, y, z, shadeValue);
             // normals.push(0, 1.0, 0);
             let xOffset = (isFloor ? sector.floorxpanning : sector.ceilingxpanning) * pixelOffset,
                 yOffset = (isFloor ? sector.floorypanning : sector.ceilingypanning) * pixelOffset;
 
             texCoords.push(x / 0.75 + xOffset, z / 0.75 + yOffset);
 
-            let shadeValue = MapTesselator.transformShadeValue(isFloor ? sector.floorshade : sector.ceilingshade);
-            shade.push(shadeValue);
             indices.push(vertexPtr++);
         }
 
@@ -119,16 +114,16 @@ export class MapTesselator{
         }
     }
 
-    static buildOuterWall(wall, sector, nextWall, vertices, texCoords, normals, shade, indices){
+    static buildOuterWall(wall, sector, nextWall, vertices, texCoords, normals, indices){
         let ceilLeft = sector.getCeilingHeight(wall.x, wall.y),
             ceilRight = sector.getCeilingHeight(nextWall.x, nextWall.y),
             floorLeft = sector.getFloorHeight(wall.x, wall.y),
             floorRight = sector.getFloorHeight(nextWall.x, nextWall.y);
             
-        MapTesselator.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, shade, indices);
+        MapTesselator.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);
     }
 
-    static buildInnerSectorWall(wall, sector, nextSector, nextWall, vertices, texCoords, normals, shade, indices){
+    static buildInnerSectorWall(wall, sector, nextSector, nextWall, vertices, texCoords, normals, indices){
         //TODO - Refactor more DRY
 
         //Inner section walls are special because the "floor"
@@ -146,7 +141,7 @@ export class MapTesselator{
             if(floorRight > ceilRight)
                 floorRight = ceilRight - 1;
 
-            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, shade, indices);          
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
         }
 
         //Indentation within parent sector floor (if any)
@@ -161,7 +156,7 @@ export class MapTesselator{
             if(floorRight > ceilRight)
                 floorRight = ceilRight - 1;
 
-            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, shade, indices);             
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);             
         }
 
 
@@ -178,7 +173,7 @@ export class MapTesselator{
             if(floorRight > ceilRight)
                 ceilRight = floorRight + 1;
 
-            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, shade, indices);          
+            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
         }
 
         // //Indentation within parent sector ceiling (if any)
@@ -197,14 +192,11 @@ export class MapTesselator{
         // }
     }
 
-    static buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, shade, indices){
-        const i = vertices.length / 3;
+    static buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices){
+        const i = vertices.length / 4;
         indices.push(i,i+1,i+2,i+2,i+1,i+3);
         MapTesselator.applyWallVertices(vertices, wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight);
         MapTesselator.applyWallTexCoords(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, texCoords);
-
-        const shadeValue = MapTesselator.transformShadeValue(wall.shade);
-        shade.push(shadeValue, shadeValue, shadeValue, shadeValue);
 
         // let norm = wall.getNormal(nextWall);
         // normals.push(norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z);
@@ -215,11 +207,13 @@ export class MapTesselator{
 
 
     static applyWallVertices(vertices, wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight){
+        const shadeValue = MapTesselator.transformShadeValue(wall.shade);
+
         vertices.push(
-            nextWall.x, ceilRight, nextWall.y,
-            wall.x, ceilLeft, wall.y,
-            nextWall.x, floorRight, nextWall.y,
-            wall.x, floorLeft, wall.y
+            nextWall.x, ceilRight, nextWall.y, shadeValue,
+            wall.x, ceilLeft, wall.y, shadeValue,
+            nextWall.x, floorRight, nextWall.y, shadeValue,
+            wall.x, floorLeft, wall.y, shadeValue
         );
     }
 

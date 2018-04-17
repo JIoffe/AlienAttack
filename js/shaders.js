@@ -73,7 +73,6 @@ const VertexShaders = {
         `        
         attribute vec4 aVertexPosition;
         attribute vec2 aTexCoords;
-        attribute float aShade;
 
         uniform mat4 uModelViewProj;
 
@@ -83,9 +82,9 @@ const VertexShaders = {
 
         void main() {
             vTextureCoords = aTexCoords;
-            gl_Position = uModelViewProj * aVertexPosition;
+            gl_Position = uModelViewProj * vec4(aVertexPosition.xyz, 1.0);
             depth = gl_Position.w;
-            vShade = aShade;
+            vShade = aVertexPosition.w;
         }
         `    
 }
