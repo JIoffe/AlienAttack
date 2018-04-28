@@ -44,6 +44,21 @@ const VertexShaders = {
             gl_PointSize = clamp(vLife, 0.0, 1.0) * 4.0;
         }                
         `,
+    decal:
+        `
+        attribute vec4 aVertexPosition;    
+        attribute vec2 aTexCoords;  
+        uniform mat4 uModelViewProj;
+
+        varying float depth;
+        varying vec2 vTextureCoords;
+
+        void main(void) {
+            gl_Position = uModelViewProj * aVertexPosition;
+            depth = gl_Position.w;
+            vTextureCoords = aTexCoords;
+        }                
+        `,
     texturedWithNormals:
         `
         attribute vec4 aVertexPosition;
@@ -121,6 +136,21 @@ const FragmentShaders = {
 
         void main(void) {                
             gl_FragColor = texture2D(uSampler, vTextureCoords);
+        }  
+        `,
+    decal:
+        `
+        precision mediump float;
+
+        uniform sampler2D uSampler;
+
+        varying float depth;
+        varying vec2 vTextureCoords;
+
+        void main(void) {                
+            float lighting = max(1.0 - depth / 25.0, 0.25);
+            gl_FragColor = texture2D(uSampler, vTextureCoords);
+            gl_FragColor.xyz *= lighting;
         }  
         `,
     skybox:

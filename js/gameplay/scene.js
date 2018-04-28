@@ -12,6 +12,7 @@ import { quat, vec3, mat4 } from 'gl-matrix';
 import { RigidBody } from '../physics/rigid-body';
 import { Projectile, ProjectileTypes } from './projectile';
 import { ParticleSystem } from '../physics/particle-system';
+import { DecalSystem } from '../geometry/decal-system';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
@@ -30,8 +31,9 @@ var firedSemiAuto = false;
 const LASER_SPEED = 25;
 
 //Projectile Constants
-const MAX_PROJECTILES = 128;
+const MAX_PROJECTILES = 64;
 const MAX_PARTICLES = 512;
+const MAX_DECALS = 64;
 
 export class Scene{
     constructor(){
@@ -48,12 +50,17 @@ export class Scene{
         })
 
         this.projectiles = new Array(MAX_PROJECTILES);
-
         this.nProjectiles = 0;
+
+        for(let i = 0; i < MAX_PROJECTILES; ++i){
+            this.projectiles[i] = new Projectile();
+        }
+
         this.weaponOffset = vec3.create();
         this.weaponRecoil = quat.create();
 
         this.particleSystem = new ParticleSystem(MAX_PARTICLES);
+        this.decalSystem = new DecalSystem(MAX_DECALS);
     }
 
     setMap(map){
@@ -94,15 +101,6 @@ export class Scene{
         else if(input.turnRight)
             player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
 
-        // if(isMoving){
-        //     //Update gun bobbing effect
-        //     this.guiSprites[0].x = art.gui_sprites[0].x + Math.sin(time.elapsedSeconds * 3.5) * 0.02;
-        //     this.guiSprites[0].y = art.gui_sprites[0].y + Math.abs(Math.cos(time.elapsedSeconds * 2.5)) * 0.05;
-        // }else{
-        //     this.guiSprites[0].x = art.gui_sprites[0].x;
-        //     this.guiSprites[0].y = art.gui_sprites[0].y;
-        // }
-
         this.weaponOffset[0] = 1.6;
         this.weaponOffset[1] = -2;
         this.weaponOffset[2] = -4.2;
@@ -124,23 +122,12 @@ export class Scene{
         //Recover from recoil
         quat.slerp(this.weaponRecoil, this.weaponRecoil, aa_math.QUAT_IDENTITY, 4 * time.secondsSinceLastFrame);
 
-        //Update flying dangerous stuff
-        for(let i = 0; i < this.nProjectiles; ++i){
-            this.projectiles[i].update(time, this.map);
-        }
 
-        //Go over again to remove any dead projectiles
         for(let i = this.nProjectiles - 1; i >= 0; --i){
             const projectile = this.projectiles[i];
+            projectile.update(time, this);
             if(!projectile.isAlive){
                 array_utils.swapDeadElements(this.projectiles, i, this.nProjectiles--);
-                
-                const forceVector = projectile.forward;
-                forceVector[0] *= -3;
-                forceVector[1] = 3;
-                forceVector[2] *= -3;
-
-                this.particleSystem.addBurst(projectile.pos, forceVector, 8, 50);
             }
         }
 
@@ -160,9 +147,15 @@ export class Scene{
         //so we have to compensate to make it appear that 
         //projectiles are going towards where the user is looking...
 
-        const projectile = new Projectile(ProjectileTypes.laser, LASER_SPEED);
+        const projectile = this.projectiles[this.nProjectiles++];
+        
+        projectile.enable();
+        projectile.type = ProjectileTypes.laser;
+        quat.copy(projectile.rot, this.player.rot);
+        projectile.setSpeed(LASER_SPEED);
+
         projectile.pos[0] = -0.45;
-        projectile.pos[1] = -0.35;
+        projectile.pos[1] = -0.25;
         projectile.pos[2] = 2.5;
 
         //Target 10 units in front of us
@@ -173,10 +166,9 @@ export class Scene{
 
         vec3.add(targetPosition, targetPosition, this.player.pos);
         vec3.add(projectile.pos, projectile.pos, this.player.pos);
+        projectile.sectorPtr = this.map.determineSector(-1, projectile.pos[0], projectile.pos[2]);
 
-        quat.copy(projectile.rot, this.player.rot);
         //        aa_math.lookAtRotation(projectile.rot, startingPosition, targetPosition);
 
-        this.projectiles[this.nProjectiles++] = projectile;
     }
 }

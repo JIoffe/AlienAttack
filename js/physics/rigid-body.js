@@ -81,16 +81,19 @@ export class RigidBody{
         }
     }
 
-    collidesWithMap(map){
-        this.sectorPtr = map.determineSector(this.sectorPtr, this.pos[0], this.pos[2]);
+    // collidesWithMap(map){
+    //     this.sectorPtr = map.determineSector(this.sectorPtr, this.pos[0], this.pos[2]);
 
-        if(this.sectorPtr === -1)
-            return true;
+    //     if(this.sectorPtr === -1)
+    //         return true;
 
-        const floorHeight = map.sectors[this.sectorPtr].getFloorHeight(this.pos[0], this.pos[2]);
-        return floorHeight >= this.pos[1];
+    //     const floorHeight = map.sectors[this.sectorPtr].getFloorHeight(this.pos[0], this.pos[2]);
+    //     return floorHeight >= this.pos[1];
+    // }
+
+    enable(){
+        this.state |= IS_ALIVE;
     }
-
     kill(){
         this.state &= ~IS_ALIVE;
     }

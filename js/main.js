@@ -40,6 +40,7 @@ import {MapReader} from './io/mapreader';
                     scene.setMap(map);
                     map.prepareRenderableGeometry(renderer.gl);
                     scene.particleSystem.initialize(renderer.gl);
+                    scene.decalSystem.initialize(renderer.gl);
                     
                     resolve(true);
                 });      

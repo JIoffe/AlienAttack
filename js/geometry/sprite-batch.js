@@ -1,27 +1,24 @@
 import { TextureUtils } from "../utils/texture.utils";
 
 export class SpriteBatch{
-    /**
-     * Initializes a sprite batch with the given maximum size
-     * @param {*} gl 
-     * @param {number} size 
-     */
-    constructor(gl, size){
-        this.displayRatio = gl.viewportWidth / gl.viewportHeight;
+    constructor(size, vDataSize = 2){
         this.size = size;
 
-        this.positionData = new Float32Array(size * 4 * 2);
+        this.positionData = new Float32Array(size * 4 * vDataSize);
         this.texCoordData = new Float32Array(size * 4 * 2);
 
-        this.positionBuffer = gl.createBuffer();
-        this.texCoordBuffer = gl.createBuffer();
-
-        this.sprites = new Array(size);
         this.nSprites = 0;
-
-        this.ibo = this.generateIndexBufferObject(gl, size);
     }
 
+    initialize(gl){
+        this.displayRatio = gl.viewportWidth / gl.viewportHeight;
+
+        this.buffers = [
+            gl.createBuffer(),
+            gl.createBuffer(),
+            this.generateIndexBufferObject(gl, this.size)
+        ];
+    }
     generateIndexBufferObject(gl, size){;
         const indices = new Array(size * 6);
         for(let i = 0; i < size; ++i){
@@ -61,30 +58,28 @@ export class SpriteBatch{
         });
     }
 
-    draw(gl, shaderProgram, sprites){
-        const n = sprites.length;
+    draw(gl, modelViewMatrix, shaderProgram, texture){
+        if(this.nSprites === 0)
+            return;
 
         gl.useProgram(shaderProgram.program);
+
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.tex);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
 
-        for(let i = n - 1; i >= 0; --i){
-            const s = sprites[i];
-            this.setSpritePosition(0, s.x, s.y, s.scale);
-            this.setSpriteTexture(0, s.img);
-        }
+        gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, modelViewMatrix);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[0]);
         gl.bufferData(gl.ARRAY_BUFFER, this.positionData, gl.STATIC_DRAW);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[1]);
         gl.bufferData(gl.ARRAY_BUFFER, this.texCoordData, gl.STATIC_DRAW);
         gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
-        gl.drawElements(gl.TRIANGLES, n * 6, gl.UNSIGNED_SHORT, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers[2]);
+        gl.drawElements(gl.TRIANGLES, this.size * 6, gl.UNSIGNED_SHORT, 0);
     }
 
     setSpritePosition(i, x, y, scale){

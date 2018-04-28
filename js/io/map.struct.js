@@ -1,9 +1,16 @@
 import { MapTesselator } from "../geometry/map-tesselator";
 import * as aa_math from "../math";
+import { CollisionData } from "../physics/collision-data";
+import { vec3 } from "gl-matrix";
 
 /**
  * Encapsulates the rendering and collision detection within a Build engine map
  */
+
+const COLLISION_DATA_BUFFER_SIZE = 10;
+const collisionDataBuffer = new Array(COLLISION_DATA_BUFFER_SIZE);
+for(let i = 0; i < COLLISION_DATA_BUFFER_SIZE; ++i)
+    collisionDataBuffer[i] = new CollisionData();
 
 const buffers = new Array(3);
 var indexCount = 0;
@@ -164,4 +171,162 @@ export class LevelMap{
             //     });
         });
     }
+
+    testCollisionWithProjectile(prevPosition, prevSector, newPosition){
+        //Cache some values of the line segment for back-face culling
+        const lx0 = prevPosition[0],
+            lx1 = newPosition[0],
+            ly0 = prevPosition[2],
+            ly1 = newPosition[2],
+            crossA = lx1 - lx0,
+            crossB = ly1 - ly0;
+
+        let collisionDataResult = collisionDataBuffer[0];
+
+        collisionDataResult.hasCollision = false;
+        collisionDataResult.sectorPtr = prevSector;
+
+
+        let continueScanning = true, activeSector = prevSector;
+
+        while(continueScanning){
+            const sector = this.sectors[activeSector],
+                bounds = sector.getWallLoops(this.walls)[0],
+                n = bounds.length;
+
+            continueScanning = false;
+
+            let nCollisions = 0;
+            for(let i = 0; i < n; ++i){
+                const wall = bounds[i];
+
+                //Ignore non-bounding walls
+                if(wall.nextsector === activeSector)
+                    continue;
+
+                const isLeft = crossA * (wall.y - ly0) - crossB * (wall.x - lx0);
+
+                //Ignore back facing surfaces - assume everything is watertight and we will make up for it
+                if(isLeft > 0)
+                    continue;
+
+                const point2 = this.walls[wall.point2];
+    
+                const collisionData = collisionDataBuffer[nCollisions];
+                aa_math.lineSegmentIntersection(collisionData, prevPosition[0], prevPosition[2], newPosition[0], newPosition[2], wall.x, wall.y, point2.x, point2.y);
+
+                if(collisionData.hasCollision){
+                    collisionData.sectorPtr = wall.nextsector;
+                    collisionData.wallptr = i;
+
+                    let terminalCollision = wall.nextsector === -1;
+                    if(!terminalCollision){
+                        const nextSector = this.sectors[wall.nextsector],
+                            x = collisionData.point[0],
+                            y = prevPosition[1],
+                            z = collisionData.point[2];
+                        terminalCollision = nextSector.getFloorHeight(x, z) > y || nextSector.getCeilingHeight(x, z) < y;
+                    }
+    
+                    if(terminalCollision){
+                        collisionData.hasCollision = true;
+                        collisionData.point[1] = prevPosition[1];
+
+                        return collisionData;
+                    }
+
+                    collisionData.hasCollision = false;
+
+                    ++nCollisions;
+                }
+            }
+
+            //Find the nearest intersection to the projectile
+            //and continue scanning in the next sector
+            if(nCollisions > 0){
+                let nearestSquaredDistance = vec3.squaredDistance(collisionDataBuffer[0], newPosition);
+                activeSector = collisionDataBuffer[0].sectorPtr;
+
+                for(let i = 1; i < nCollisions; ++i){
+                    const collisionData = collisionDataBuffer[i],
+                        d = vec3.squaredDistance(collisionData, newPosition);
+
+                    if(d < nearestSquaredDistance){
+                        nearestSquaredDistance = d;
+                        activeSector = collisionData.sectorPtr;
+                    }
+                }
+                continueScanning = true;
+            }  
+        }
+
+        collisionDataResult.hasCollision = false;
+        return collisionDataResult;
+    }
+//     testCollisionWithRigidBody(rigidBody){
+//         const previousSector = rigidBody.sectorPtr;
+//         rigidBody.sectorPtr = this.determineSector(rigidBody.sectorPtr, rigidBody.pos[0], rigidBody.pos[2]);
+//         if(rigidBody.sectorPtr === -1){
+//             vec3.copy(collisionData.point, rigidBody.pos);
+//             collisionData.surfaceNormal[0] = -rigidBody.velocity[0];
+//             collisionData.surfaceNormal[1] = -rigidBody.velocity[1];
+//             collisionData.surfaceNormal[2] = -rigidBody.velocity[2];
+//             vec3.normalize(collisionData.surfaceNormal, collisionData.surfaceNormal);
+
+//             collisionData.hasCollision = true;
+//             return collisionData;
+//         }
+
+//         collisionData.hasCollision = false;
+
+//         const bounds = this.sectors[rigidBody.sectorPtr].getWallLoops(this.walls)[0],
+//             n = bounds.length,
+//             px = rigidBody.pos[0],
+//             py = rigidBody.pos[2];
+
+//         const cr = 1;
+
+//         for(let i = 0; i < n; ++i){
+//             const wall = bounds[i];
+//             if(wall.nextsector !== -1)
+//                 continue;
+
+//             const point2 = this.walls[wall.point2];
+
+//             //project vector u onto v,
+//             //where u is the vector to the rigidBody from wall point 1
+//             //and v is the vector from wall point 1 to wall point 2
+//             const ux = px - wall.x,
+//                 uy = px - wall.y,
+//                 vx = point2.x - wall.x,
+//                 vy = point2.y - wall.y;
+
+//             const mv = vx*vx + vy*vy,
+//                 s = (ux * vx + uy * vy) / mv,
+//                 projx = s * vx,
+//                 projy = s * vy,
+//                 rx = wall.x + projx,
+//                 ry = wall.y + projy;
+// //(Math.sign(rx - wall.x) !== Math.sign(rx - point2.x) && Math.sign(ry - wall.y) !== Math.sign(ry - point2.y))  &&
+//             if( (Math.pow(rx - px, 2) + Math.pow(ry - py, 2)) < cr * cr){
+//                 console.log('hit a wall!');
+//                 collisionData.hasCollision = true;
+
+//                 collisionData.point[0] = rx;
+//                 collisionData.point[1] = rigidBody.pos[1];
+//                 collisionData.point[2] = ry;
+
+//                 //The nice thing about walls is that they are all perfectly straight :)
+//                 collisionData.surfaceNormal[0] = px - rx;
+//                 collisionData.surfaceNormal[1] = 0;
+//                 collisionData.surfaceNormal[2] = py - ry;
+
+//                 vec3.normalize(collisionData.surfaceNormal, collisionData.surfaceNormal);
+
+//                 return collisionData;
+//             }
+//         }
+
+//         return collisionData;
+//     }
 }

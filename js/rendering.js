@@ -4,7 +4,6 @@ import * as aa_math from './math';
 import * as art from './art';
 import { Skybox } from './geometry/skybox';
 import { TextureUtils } from './utils/texture.utils';
-import { SpriteBatch } from './geometry/sprite-batch';
 import { Laser } from './geometry/fx/laser';
 import { ObjReader } from './io/obj-reader';
 import { ParticleSystem } from './physics/particle-system';
@@ -40,9 +39,6 @@ export class Renderer{
         this.projectileGeometries = [
           Laser.renderable  
         ];
-
-        //Sprite Batch for GUI elements - not that many really
-        this.guiSpriteBatch = new SpriteBatch(this.gl, 32);
 
         //These float32 buffer matrices are used for camera transforms
         this.modelViewMatrix = mat4.create();
@@ -86,9 +82,10 @@ export class Renderer{
                     this.wallTextures = textures;
                     console.log(`Loaded ${textures.length} map textures`);
 
-                    return this.guiSpriteBatch.setSpriteSheet(this.gl, art.gui);
+                    return TextureUtils.initTextures2D(this.gl, art.mesh_texture_list, true, true);
+                    // return this.guiSpriteBatch.setSpriteSheet(this.gl, art.gui);
                 })
-                .then(() => TextureUtils.initTextures2D(this.gl, art.mesh_texture_list, true, true))
+                // .then(() => TextureUtils.initTextures2D(this.gl, art.mesh_texture_list, true, true))
                 .then(meshTextures => {
                     this.meshTextures = meshTextures;
 
@@ -160,8 +157,9 @@ export class Renderer{
                 gl.drawElements(gl.TRIANGLES, renderable.indexCount, gl.UNSIGNED_SHORT, 0)
             }
         }
-
+        
         gl.depthMask(false);
+        scene.decalSystem.draw(gl, this.modelViewMatrix, this.shaderPrograms[6], this.particleTextures[0]);
         //Shinies and other effects
         gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
         scene.particleSystem.draw(gl, this.shaderPrograms[3], this.particleTextures[0], this.modelViewMatrix);
@@ -199,7 +197,8 @@ export class Renderer{
             new ShaderProgram(gl, VertexShaders.gui, FragmentShaders.gui),
             new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.particle),
             new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor),
-            new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective)
+            new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective),
+            new ShaderProgram(gl, VertexShaders.decal, FragmentShaders.decal)
         ];
     }
 
