@@ -16,7 +16,7 @@ import { DecalSystem } from '../geometry/decal-system';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
-const PLAYER_TURN_SPEED = 1.4; //RADIANS PER S
+const PLAYER_TURN_SPEED = 65.4; //Degrees per second
 
 const PLAYER_HEIGHT = 2.25;
 const PLAYER_HEIGHT_PADDING = 0.25;
@@ -98,11 +98,13 @@ export class Scene{
             isMoving = true;
         }
 
-            //Turning can be either from keys or mouse
+        //Turning can be either from keys or mouse
         if(input.turnLeft)
-            player.rotateY(PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+            input.mouseX += PLAYER_TURN_SPEED * time.secondsSinceLastFrame;
         else if(input.turnRight)
-            player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
+            input.mouseX -= PLAYER_TURN_SPEED * time.secondsSinceLastFrame;
+
+        quat.fromEuler(player.rot, input.mouseY, input.mouseX, 0);
 
         this.weaponOffset[0] = 1.7;
         this.weaponOffset[1] = -2;
@@ -124,7 +126,6 @@ export class Scene{
 
         //Recover from recoil
         quat.slerp(this.weaponRecoil, this.weaponRecoil, WEAPON_DEFAULT_ROTATION, 4 * time.secondsSinceLastFrame);
-
 
         for(let i = this.nProjectiles - 1; i >= 0; --i){
             const projectile = this.projectiles[i];

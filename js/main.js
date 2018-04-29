@@ -26,10 +26,13 @@ import { decals } from './art';
     function initialize(){
         return new Promise(function(resolve, reject){
             const canvas = d.getElementById('c');
+                 
             time = new Time();
             input = new InputListener(d);
             scene = new Scene();
             renderer = new Renderer(canvas);    
+
+            input.addPointerLockListener(canvas);
 
             renderer
                 .initialize()
@@ -41,6 +44,8 @@ import { decals } from './art';
                     scene.setMap(map);
                     map.prepareRenderableGeometry(renderer.gl);
                     scene.particleSystem.initialize(renderer.gl);
+
+                    input.mouseX = map.startingPlayerRotation;
 
                     return scene.decalSystem.initialize(renderer.gl, decals);
                 })

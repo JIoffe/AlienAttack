@@ -14,7 +14,26 @@ var semiAutoFire = false;
 export class InputListener{
     constructor(document){
         this.inputStateFlags = 0;
+        this.mouselook = false;
 
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.mouseXSensitivity = 0.08;
+        this.mouseYSensitivity = 0.08;
+
+        const lockUpdateCallback = this._onLockUpdate.bind(this);
+        document.addEventListener('pointerlockchange', lockUpdateCallback, false);
+        document.addEventListener('mozpointerlockchange', lockUpdateCallback, false);
+        document.addEventListener('webkitpointerlockchange', lockUpdateCallback, false);
+
+        document.addEventListener('mousemove', this._onMouseLook.bind(this), false);
+
+        document.addEventListener('click', ev => {
+            if(this.mouselook){
+                semiAutoFire = true;
+                this.inputStateFlags |= FIRE
+            }
+        });
         document.addEventListener("keydown", ev => {
             //console.log('Pushed '  + ev.keyCode);
             switch (ev.keyCode){
@@ -90,6 +109,23 @@ export class InputListener{
         });        
     }
 
+    addPointerLockListener(element){
+        this.pointerLockListener = element;
+
+        element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+
+        if(!element.requestPointerLock){
+            console.error('This browser does not support pointer lock - mouse controls will not be available');
+            return;
+        }
+
+        element.addEventListener('click', getPointerLock);
+
+        function getPointerLock(ev){
+            element.requestPointerLock();
+            element.removeEventListener('click', getPointerLock);
+        }
+    }
     /**
      * Returns true on the first frame the user engages fire
      */
@@ -136,5 +172,45 @@ export class InputListener{
 
     get fire(){
         return !!(this.inputStateFlags & FIRE)
+    } 
+
+    _onMouseLook(ev){
+        if(!this.mouselook)
+            return;
+
+        const movementX = ev.movementX ||
+            ev.mozMovementX          ||
+            ev.webkitMovementX       ||
+            0,
+        movementY = ev.movementY ||
+            ev.mozMovementY      ||
+            ev.webkitMovementY   ||
+            0;
+
+        this.mouseX -= movementX * this.mouseXSensitivity;
+        this.mouseY += movementY * this.mouseYSensitivity;
+
+        if(this.mouseY >= 89.5){
+            this.mouseY = 89.5;
+        }else if(this.mouseY <= -89.5){
+            this.mouseY = -89.5;
+        }
+    }
+
+    _onLockUpdate(){
+        const lockedElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement;
+        this.mouselook = !!this.pointerLockListener && lockedElement === this.pointerLockListener;
+
+        if(!this.mouselook){
+            this.mouseY = 0;
+
+            const element = this.pointerLockListener;
+            element.addEventListener('click', getPointerLock);
+
+            function getPointerLock(ev){
+                element.requestPointerLock();
+                element.removeEventListener('click', getPointerLock);
+            }
+        }
     }
 }

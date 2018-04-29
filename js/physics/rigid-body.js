@@ -37,10 +37,12 @@ export class RigidBody{
      */
     moveForward2d(velocity, time){
         const d = time.secondsSinceLastFrame * velocity;
-    
         vec3.transformQuat(aa_math.VEC3_TEMP, aa_math.VEC3_FORWARD, this.rot);
+        aa_math.VEC3_TEMP[1] = 0;
+        vec3.normalize(aa_math.VEC3_TEMP, aa_math.VEC3_TEMP);
+
         this.pos[0] += aa_math.VEC3_TEMP[0] * d;
-        this.pos[1] += aa_math.VEC3_TEMP[1] * d;
+        //this.pos[1] += aa_math.VEC3_TEMP[1] * d;
         this.pos[2] += aa_math.VEC3_TEMP[2] * d;
     }
 
@@ -51,11 +53,13 @@ export class RigidBody{
      */
     strafe2d(velocity, time){
         const d = time.secondsSinceLastFrame * velocity;
-    
         vec3.transformQuat(aa_math.VEC3_TEMP, aa_math.VEC3_RIGHT, this.rot);
-        this.pos[0] += aa_math.VEC3_TEMP[0] * d;
-        this.pos[1] += aa_math.VEC3_TEMP[1] * d;
-        this.pos[2] += aa_math.VEC3_TEMP[2] * d;
+        aa_math.VEC3_TEMP[1] = 0;
+        vec3.normalize(aa_math.VEC3_TEMP, aa_math.VEC3_TEMP);
+
+        this.pos[0] -= aa_math.VEC3_TEMP[0] * d;
+        //this.pos[1] += aa_math.VEC3_TEMP[1] * d;
+        this.pos[2] -= aa_math.VEC3_TEMP[2] * d;
     }
 
     /**

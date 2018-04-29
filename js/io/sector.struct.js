@@ -43,6 +43,11 @@ export class Sector{
         return this.floorz + this.getSlopeOffset(x, z, this.floorheinum);
     }
 
+    /**
+     * Returns this y-coordinate of the ceiling at (x, z)
+     * @param {number} x 
+     * @param {number} z 
+     */
     getCeilingHeight(x, z){
         return this.ceilingz + this.getSlopeOffset(x, z, this.ceilingheinum);
     }
