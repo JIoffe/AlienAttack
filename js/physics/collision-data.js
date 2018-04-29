@@ -7,6 +7,7 @@ export class CollisionData{
         this.point = vec3.create();
         this.sectorPtr = -1;
         this.wallptr = -1;
+        this.picnum = -1;
     }
 
     /**

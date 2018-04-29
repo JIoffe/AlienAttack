@@ -27,8 +27,13 @@ export class Projectile extends RigidBody{
         const collisionData = scene.map.testCollisionWithProjectile(this.pos, this.sectorPtr, NEXT_POS);
 
         if(collisionData.hasCollision){
-            scene.particleSystem.addBurst(collisionData.point, collisionData.surfaceNormal, 25, 50);
-            scene.decalSystem.add(collisionData.point, collisionData.surfaceNormal, 0.5);
+            vec3.copy(this.velocity, collisionData.surfaceNormal);
+            this.velocity[0] *= 3;
+            this.velocity[1] *= 3;
+            this.velocity[2] *= 3;
+
+            scene.particleSystem.addBurst(collisionData.point, this.velocity, 35, 50);
+            scene.decalSystem.add(scene.getDamageDecal(collisionData.picnum), collisionData.point, collisionData.surfaceNormal, 0.3);
             this.kill();
         }else{
             this.sectorPtr = collisionData.sectorPtr;

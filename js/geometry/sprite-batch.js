@@ -10,14 +10,25 @@ export class SpriteBatch{
         this.nSprites = 0;
     }
 
-    initialize(gl){
-        this.displayRatio = gl.viewportWidth / gl.viewportHeight;
+    initialize(gl, spriteSheetDef){
+        return new Promise((resolve, reject) => {
+            this.displayRatio = gl.viewportWidth / gl.viewportHeight;
+            this.def = spriteSheetDef.def;
 
-        this.buffers = [
-            gl.createBuffer(),
-            gl.createBuffer(),
-            this.generateIndexBufferObject(gl, this.size)
-        ];
+            this.buffers = [
+                gl.createBuffer(),
+                gl.createBuffer(),
+                this.generateIndexBufferObject(gl, this.size)
+            ];
+
+            TextureUtils.initTexture2D(gl, spriteSheetDef.path)
+                .then(texture => {
+                    this.texture = texture;
+                    resolve();
+                });
+        });
+
+        
     }
     generateIndexBufferObject(gl, size){;
         const indices = new Array(size * 6);
@@ -58,14 +69,14 @@ export class SpriteBatch{
         });
     }
 
-    draw(gl, modelViewMatrix, shaderProgram, texture){
+    draw(gl, modelViewMatrix, shaderProgram){
         if(this.nSprites === 0)
             return;
 
         gl.useProgram(shaderProgram.program);
 
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
         gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
 
         gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, modelViewMatrix);

@@ -231,6 +231,7 @@ export class LevelMap{
                     if(terminalCollision){
                         collisionData.hasCollision = true;
                         collisionData.point[1] = prevPosition[1];
+                        collisionData.picnum = wall.picnum;
 
                         return collisionData;
                     }

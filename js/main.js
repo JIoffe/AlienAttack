@@ -3,6 +3,7 @@ import {Scene} from './gameplay/scene';
 import {Renderer} from './rendering';
 import {InputListener} from './gameplay/input';
 import {MapReader} from './io/mapreader';
+import { decals } from './art';
 
 //This is not encapsulated as a "class"
 //to keep the scope simpler, as its not exported
@@ -40,10 +41,10 @@ import {MapReader} from './io/mapreader';
                     scene.setMap(map);
                     map.prepareRenderableGeometry(renderer.gl);
                     scene.particleSystem.initialize(renderer.gl);
-                    scene.decalSystem.initialize(renderer.gl);
-                    
-                    resolve(true);
-                });      
+
+                    return scene.decalSystem.initialize(renderer.gl, decals);
+                })
+                .then(() => resolve(true));      
         });
     }
 

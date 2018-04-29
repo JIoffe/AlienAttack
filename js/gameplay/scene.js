@@ -171,4 +171,19 @@ export class Scene{
         //        aa_math.lookAtRotation(projectile.rot, startingPosition, targetPosition);
 
     }
+
+    getDamageDecal(picnum){
+        switch(picnum){
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+                return Math.random() > 0.5 ? 2 : 3;
+            case 5:
+                return 6;
+            default:
+                return 4;
+        }
+    }
 }

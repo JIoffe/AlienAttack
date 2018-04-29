@@ -14,7 +14,7 @@ export class DecalSystem extends SpriteBatch{
      * Adds a new decal at the specified position and orientation
      * @param {*} pos 
      */
-    add(pos, normal, size){
+    add(decal, pos, normal, size){
         if(this.nSprites >= this.size){
             ++this.overflow;
         }
@@ -31,18 +31,20 @@ export class DecalSystem extends SpriteBatch{
         this._addPositionData(i + 6, offset, -offset, pos, normal);
         this._addPositionData(i + 9, -offset, -offset, pos, normal);
 
+        const imageDef = this.def[decal];
+
         const j = this.nSprites * 8;
-        this.texCoordData[j] = 0.0;
-        this.texCoordData[j + 1] = 0.0;
+        this.texCoordData[j] = imageDef.xStart;
+        this.texCoordData[j + 1] = imageDef.yStart;
 
-        this.texCoordData[j + 2] = 1.0;
-        this.texCoordData[j + 3] = 0.0;
+        this.texCoordData[j + 2] = imageDef.xEnd;
+        this.texCoordData[j + 3] = imageDef.yStart;
 
-        this.texCoordData[j + 4] = 1.0;
-        this.texCoordData[j + 5] = 1.0;
+        this.texCoordData[j + 4] = imageDef.xEnd;
+        this.texCoordData[j + 5] = imageDef.yEnd;
 
-        this.texCoordData[j + 6] = 0.0;
-        this.texCoordData[j + 7] = 1.0;
+        this.texCoordData[j + 6] = imageDef.xStart;
+        this.texCoordData[j + 7] = imageDef.yEnd;
 
         if(this.nSprites < this.size)
             ++this.nSprites;
