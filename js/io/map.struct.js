@@ -217,6 +217,7 @@ export class LevelMap{
 
                 if(collisionData.hasCollision){
                     collisionData.sectorPtr = wall.nextsector;
+                    console.log('collision with wall', collisionData.sectorPtr);
                     collisionData.wallptr = i;
 
                     let terminalCollision = wall.nextsector === -1;

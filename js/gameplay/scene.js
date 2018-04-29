@@ -35,6 +35,9 @@ const MAX_PROJECTILES = 64;
 const MAX_PARTICLES = 512;
 const MAX_DECALS = 64;
 
+const WEAPON_DEFAULT_ROTATION = quat.create();
+quat.fromEuler(WEAPON_DEFAULT_ROTATION, 0, 15, 0);
+
 export class Scene{
     constructor(){
         this.player = new RigidBody();
@@ -101,7 +104,7 @@ export class Scene{
         else if(input.turnRight)
             player.rotateY(-PLAYER_TURN_SPEED * time.secondsSinceLastFrame);
 
-        this.weaponOffset[0] = 1.6;
+        this.weaponOffset[0] = 1.7;
         this.weaponOffset[1] = -2;
         this.weaponOffset[2] = -4.2;
         if(isMoving){
@@ -120,7 +123,7 @@ export class Scene{
         player.clipAgainstMap(map);
 
         //Recover from recoil
-        quat.slerp(this.weaponRecoil, this.weaponRecoil, aa_math.QUAT_IDENTITY, 4 * time.secondsSinceLastFrame);
+        quat.slerp(this.weaponRecoil, this.weaponRecoil, WEAPON_DEFAULT_ROTATION, 4 * time.secondsSinceLastFrame);
 
 
         for(let i = this.nProjectiles - 1; i >= 0; --i){
@@ -139,7 +142,7 @@ export class Scene{
             return;
         }
 
-        quat.fromEuler(this.weaponRecoil, 45, 0, 0);
+        quat.fromEuler(this.weaponRecoil, 45, 15, 0);
 
         //TODO - avoid allocations here
 
