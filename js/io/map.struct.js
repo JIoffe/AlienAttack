@@ -190,8 +190,31 @@ export class LevelMap{
         let continueScanning = true, activeSector = prevSector;
 
         while(continueScanning){
-            const sector = this.sectors[activeSector],
-                bounds = sector.getWallLoops(this.walls)[0],
+            const sector = this.sectors[activeSector];
+            let collisionData = collisionDataBuffer[0];
+
+            //First test against floor/ceiling
+            const floorHeight = sector.getFloorHeight(newPosition[0], newPosition[2]);
+            if(floorHeight > newPosition[1]){
+                collisionData.hasCollision = true;
+                vec3.copy(collisionData.point, newPosition);
+                collisionData.point[1] = floorHeight;
+                vec3.copy(collisionData.surfaceNormal, sector.floorNormal);
+                collisionData.picnum = sector.floorpicnum;
+                return collisionData;
+            }
+
+            const ceilingHeight = sector.getCeilingHeight(newPosition[0], newPosition[2]);
+            if(ceilingHeight < newPosition[1]){
+                collisionData.hasCollision = true;
+                vec3.copy(collisionData.point, newPosition);
+                collisionData.point[1] = ceilingHeight;
+                vec3.copy(collisionData.surfaceNormal, sector.ceilingNormal);
+                collisionData.picnum = sector.ceilingpicnum;
+                return collisionData;      
+            }
+
+            const bounds = sector.getWallLoops(this.walls)[0],
                 n = bounds.length;
 
             continueScanning = false;
@@ -212,7 +235,7 @@ export class LevelMap{
 
                 const point2 = this.walls[wall.point2];
     
-                const collisionData = collisionDataBuffer[nCollisions];
+                collisionData = collisionDataBuffer[nCollisions];
                 aa_math.lineSegmentIntersection(collisionData, prevPosition[0], prevPosition[2], newPosition[0], newPosition[2], wall.x, wall.y, point2.x, point2.y);
 
                 if(collisionData.hasCollision){

@@ -1,5 +1,6 @@
 import * as aa_math from '../math'
 import { Bounds } from '../collision/bounds.struct';
+import { vec3 } from 'gl-matrix';
 
 export class Sector{
     constructor(stream, MAP_Z_IMPORT_SCALE, MAP_HEI_SCALE){
@@ -43,6 +44,48 @@ export class Sector{
         return this.floorz + this.getSlopeOffset(x, z, this.floorheinum);
     }
 
+    computeFloorNormal(){
+        const center = this.getFloorHeight(0, 0);
+        const right = this.getFloorHeight(1, 0);
+        const forward = this.getFloorHeight(0, 1);
+
+        //determine a coordinate system
+        const x = vec3.create(); x[0] = 1;
+        x[1] = right - center; x[2] = 0;
+        vec3.normalize(x, x);
+
+        const z = vec3.create();
+        z[0] = 0; z[1] = forward - center; z[2] = 1;
+        vec3.normalize(z, z);
+
+        const y = vec3.create();
+        vec3.cross(y, z, x);
+        vec3.normalize(y, y);
+
+        return y;
+    }
+
+    computeCeilingNormal(){
+        const center = this.getCeilingHeight(0, 0);
+        const right = this.getCeilingHeight(1, 0);
+        const forward = this.getCeilingHeight(0, 1);
+
+        //determine a coordinate system
+        const x = vec3.create();
+        x[0] = 1; x[1] = right - center; x[2] = 0;
+        vec3.normalize(x, x);
+
+        const z = vec3.create();
+        z[0] = 0; z[1] = forward - center; z[2] = 1;
+        vec3.normalize(z, z);
+
+        const y = vec3.create();
+        vec3.cross(y, x, z);
+        vec3.normalize(y, y);
+
+        return y;
+    }
+
     /**
      * Returns this y-coordinate of the ceiling at (x, z)
      * @param {number} x 
@@ -70,7 +113,10 @@ export class Sector{
         normX /= w; normZ /= w;
 
         this.refNormX = normX;
-        this.refNormZ = normZ;     
+        this.refNormZ = normZ;
+
+        this.floorNormal = this.computeFloorNormal();
+        this.ceilingNormal = this.computeCeilingNormal();
     }
 
     getNeighboringSectors(walls){

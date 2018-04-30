@@ -44,7 +44,7 @@ export function insidePolygon(polygonPoints, px, py){
         }
     }
 
-    return intersectionCount % 2 !== 0;
+    return intersectionCount & 1 !== 0;
 }
 
 export function clampDegrees(d){
