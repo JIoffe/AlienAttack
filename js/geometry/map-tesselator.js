@@ -1,5 +1,7 @@
 import * as libtess from 'libtess'
 import * as ArrayUtils from '../utils/array.utils'
+import * as aa_math from '../math';
+import * as art from '../art';
 
 const SIZEOF_SHORT = 2;
 
@@ -89,6 +91,8 @@ export class MapTesselator{
 
         let shadeValue = MapTesselator.transformShadeValue(isFloor ? sector.floorshade : sector.ceilingshade);
 
+        const picnum = isFloor ? sector.floorpicnum : sector.ceilingpicnum;
+
         for(let i = 0; i < points.length; i += 2){
             let x = points[i],
                 z = points[i+1],
@@ -96,10 +100,11 @@ export class MapTesselator{
 
             vertices.push(x, y, z, shadeValue);
             // normals.push(0, 1.0, 0);
-            let xOffset = (isFloor ? sector.floorxpanning : sector.ceilingxpanning) * pixelOffset,
-                yOffset = (isFloor ? sector.floorypanning : sector.ceilingypanning) * pixelOffset;
 
-            texCoords.push(x / 0.75 + xOffset, z / 0.75 + yOffset);
+            texCoords.push(
+                x / (art.MAP_IMPORT_SCALE * 1024.0) + sector.floorxpanning / 256.0 * art.wallTexDimensX[picnum],
+                z / (art.MAP_IMPORT_SCALE * 1024.0) + sector.floorypanning / 256.0 * art.wallTexDimensY[picnum]
+            );
 
             indices.push(vertexPtr++);
         }
@@ -120,7 +125,7 @@ export class MapTesselator{
             floorLeft = sector.getFloorHeight(wall.x, wall.y),
             floorRight = sector.getFloorHeight(nextWall.x, nextWall.y);
             
-        MapTesselator.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);
+        MapTesselator.buildWallSection(wall, nextWall, sector, null, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);
     }
 
     static buildInnerSectorWall(wall, sector, nextSector, nextWall, vertices, texCoords, normals, indices){
@@ -141,7 +146,7 @@ export class MapTesselator{
             if(floorRight > ceilRight)
                 floorRight = ceilRight - 1;
 
-            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
+            this.buildWallSection(wall, nextWall, sector, nextSector, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
         }
 
         //Indentation within parent sector floor (if any)
@@ -156,7 +161,7 @@ export class MapTesselator{
             if(floorRight > ceilRight)
                 floorRight = ceilRight - 1;
 
-            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);             
+            this.buildWallSection(wall, nextWall, sector, nextSector, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);             
         }
 
 
@@ -173,7 +178,7 @@ export class MapTesselator{
             if(floorRight > ceilRight)
                 ceilRight = floorRight + 1;
 
-            this.buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
+            this.buildWallSection(wall, nextWall, sector, nextSector, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices);          
         }
 
         // //Indentation within parent sector ceiling (if any)
@@ -192,11 +197,11 @@ export class MapTesselator{
         // }
     }
 
-    static buildWallSection(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices){
+    static buildWallSection(wall, nextWall, sector, nextSector, ceilLeft, floorLeft, ceilRight, floorRight, vertices, normals, texCoords, indices){
         const i = vertices.length / 4;
         indices.push(i,i+1,i+2,i+2,i+1,i+3);
         MapTesselator.applyWallVertices(vertices, wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight);
-        MapTesselator.applyWallTexCoords(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, texCoords);
+        MapTesselator.applyWallTexCoords(wall, nextWall, sector, nextSector, ceilLeft, floorLeft, ceilRight, floorRight, texCoords);
 
         // let norm = wall.getNormal(nextWall);
         // normals.push(norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z, norm.x, 0, norm.z);
@@ -217,25 +222,31 @@ export class MapTesselator{
         );
     }
 
-    static applyWallTexCoords(wall, nextWall, ceilLeft, floorLeft, ceilRight, floorRight, texCoords){
+    static applyWallTexCoords(wall, nextWall, sector, nextSector, ceilLeft, floorLeft, ceilRight, floorRight, texCoords){
         //*panning = offset in texels
         //*repeat = texels per world unit
-        const texPixelWidth = 64,
-            pixelOffset = 0.015625,
-            xOffset = -wall.xpanning * pixelOffset,
-            yOffset = -wall.ypanning * pixelOffset,
-            wallWidth = Math.sqrt(Math.pow(wall.x - nextWall.x, 2) + Math.pow(wall.y - nextWall.y, 2));
-        
-        let texRight = xOffset - wall.xrepeat / (texPixelWidth / 8),// (wall.xrepeat / 255),
-            texLeft = xOffset,
-            texTop = yOffset,
-            texBottom = yOffset - wall.yrepeat / (texPixelWidth / 16);//(Math.abs(ceilLeft - floorLeft) * 0.1) / (wall.yrepeat * pixelOffset);
 
+        const texRight = (8.0 * wall.xrepeat + wall.xpanning) / art.wallTexDimensX[wall.picnum],
+            texLeft = wall.xpanning / art.wallTexDimensX[wall.picnum];
+            // texTop = yOffset,
+            // texBottom = yOffset + wall.yrepeat / (texPixelWidth / 8);
+
+            // w->wall.buffer[i].u = ((dist * 8.0f * wal->xrepeat) + wal->xpanning) / (float)(tilesiz[curpicnum].x);
+            // w->wall.buffer[i].v = (-(float)(yref + (w->wall.buffer[i].y * 16)) / ((tilesiz[curpicnum].y * 2048.0f) / (float)(wal->yrepeat))) + ypancoef;
+
+        const picHeight = art.wallTexDimensY[wall.picnum];
+
+        // texCoords.push(
+        //     texRight, -ceilRight/art.MAP_IMPORT_SCALE / picHeight,   //Top Right
+        //     texLeft, -ceilLeft/art.MAP_IMPORT_SCALE / picHeight,  //Top left
+        //     texRight, -floorRight/art.MAP_IMPORT_SCALE * 16.0 / (picHeight * 32.0) / wall.yrepeat,  // Bottom right
+        //     texLeft, -floorLeft/art.MAP_IMPORT_SCALE * 16.0 / (picHeight * 32.0) / wall.yrepeat  //bottom left
+        // )
         texCoords.push(
-            texRight, texTop,   //Top Right
-            texLeft, texTop,  //Top left
-            texRight, texBottom,  // Bottom right
-            texLeft, texBottom  //bottom left
+            texRight, 0,   //Top Right
+            texLeft, 0,  //Top left
+            texRight, _getVTexCoordRepeat(ceilRight, floorRight, wall),  // Bottom right
+            texLeft,  _getVTexCoordRepeat(ceilLeft, floorLeft, wall) //bottom left
         )
     }
 
@@ -244,6 +255,18 @@ export class MapTesselator{
     }
 }
 
+function _getVTexCoordRepeat(ceil, floor, wall){
+    return ((ceil - floor)/art.MAP_Z_IMPORT_SCALE * wall.yrepeat) / 2048.0 / art.wallTexDimensY[wall.picnum];
+}
+function _getVTexCoord(yref, y, wall){
+    var v = (y/(art.MAP_Z_IMPORT_SCALE * 512.0) + wall.ypanning) / art.wallTexDimensY[wall.picnum];
+    console.log(v);
+    return v;
+    //return ((-y / art.MAP_IMPORT_SCALE)  + wall.ypanning) / art.wallTexDimensY[wall.picnum];
+    //                z / (art.MAP_IMPORT_SCALE * 1024.0) + sector.floorypanning / 256.0 * art.wallTexDimensY[picnum]
+   // return y * 16 / (art.wallTexDimensY[wall.picnum] * 2048.0);
+    //return (yref + (y/art.MAP_Z_IMPORT_SCALE) * 16) / (art.wallTexDimensY[wall.picnum] * 2048.0) / wall.yrepeat;
+}
 var tessy = (function initTesselator() {
     // function called for each vertex of tesselator output
     function vertexCallback(data, polyVertArray) {
