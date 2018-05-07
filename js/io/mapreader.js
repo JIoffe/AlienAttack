@@ -6,10 +6,11 @@ import {BinaryStream} from './fileio';
 import { Sector } from './sector.struct';
 import { Wall } from './wall.struct';
 import { LevelMap } from './map.struct';
+import * as art from '../art';
 
-const MAP_IMPORT_SCALE = 0.0015;
-const MAP_Z_IMPORT_SCALE = MAP_IMPORT_SCALE * 0.0625;
-const MAP_HEI_SCALE = 0.010986;
+const MAP_IMPORT_SCALE = art.MAP_IMPORT_SCALE;
+const MAP_Z_IMPORT_SCALE = art.MAP_Z_IMPORT_SCALE;
+const MAP_HEI_SCALE = art.MAP_HEI_SCALE;
 
 export class MapReader{
     readUrl(url){

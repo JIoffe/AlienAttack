@@ -1,3 +1,7 @@
+export const MAP_IMPORT_SCALE = 0.0015;
+export const MAP_Z_IMPORT_SCALE = MAP_IMPORT_SCALE * 0.0625;
+export const MAP_HEI_SCALE = 0.010986;
+
 export const wallTextures = [
     '/img/wall1.png',
     '/img/wall2.png',
@@ -5,6 +9,24 @@ export const wallTextures = [
     '/img/floor1.png',
     '/img/grate.png',
     '/img/glass1.png'
+];
+
+export const wallTexDimensX = [
+    64,
+    64,
+    32,
+    64,
+    64,
+    64
+];
+
+export const wallTexDimensY = [
+    64,
+    64,
+    32,
+    64,
+    64,
+    64
 ];
 
 //TODO - consider batching particle textures if there are too many of them

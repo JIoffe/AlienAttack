@@ -18,6 +18,7 @@ import { DecalSystem } from '../geometry/decal-system';
 const PLAYER_MOVEMENT_SPEED = 5;
 const PLAYER_TURN_SPEED = 65.4; //Degrees per second
 
+const PLAYER_COLLISION_RADIUS = 1.0;
 const PLAYER_HEIGHT = 2.25;
 const PLAYER_HEIGHT_PADDING = 0.25;
 
@@ -41,6 +42,7 @@ quat.fromEuler(WEAPON_DEFAULT_ROTATION, 0, 15, 0);
 export class Scene{
     constructor(){
         this.player = new RigidBody();
+        this.player.radius = PLAYER_COLLISION_RADIUS;
 
         //Deep copy of sprite definitions in case we need to move things around later
         this.guiSprites = art.gui_sprites.map(s => {
@@ -83,18 +85,18 @@ export class Scene{
         */
         let isMoving = false;
         if(input.moveForward){
-            player.moveForward2d(PLAYER_MOVEMENT_SPEED, time);
+            player.moveForward2d(PLAYER_MOVEMENT_SPEED);
             isMoving = true;
         }else if(input.moveBackward){
-            player.moveForward2d(-PLAYER_MOVEMENT_SPEED, time);
+            player.moveForward2d(-PLAYER_MOVEMENT_SPEED);
             isMoving = true;
         }
 
         if(input.strafeLeft){
-            player.strafe2d(-PLAYER_MOVEMENT_SPEED, time);
+            player.strafe2d(-PLAYER_MOVEMENT_SPEED);
             isMoving = true;
         }else if(input.strafeRight){
-            player.strafe2d(PLAYER_MOVEMENT_SPEED, time);
+            player.strafe2d(PLAYER_MOVEMENT_SPEED);
             isMoving = true;
         }
 
@@ -112,6 +114,9 @@ export class Scene{
         if(isMoving){
             this.weaponOffset[0] += Math.sin(time.elapsedSeconds * 3.5) * 0.2;
             this.weaponOffset[1] += Math.abs(Math.cos(time.elapsedSeconds * 4.5)) * 0.35;
+        }else{
+            player.velocity[0] = 0;
+            player.velocity[2] = 0;
         }
 
         if(input.jump)
@@ -121,8 +126,7 @@ export class Scene{
             this.firePrimaryWeapon();
         }
 
-        player.update(time);
-        player.clipAgainstMap(map);
+        player.update(time, map);
 
         //Recover from recoil
         quat.slerp(this.weaponRecoil, this.weaponRecoil, WEAPON_DEFAULT_ROTATION, 4 * time.secondsSinceLastFrame);
@@ -160,7 +164,7 @@ export class Scene{
 
         projectile.pos[0] = -0.45;
         projectile.pos[1] = -0.25;
-        projectile.pos[2] = 2.5;
+        projectile.pos[2] = 2.0;
 
         //Target 10 units in front of us
         const targetPosition = new Float32Array([0,0,-10]);

@@ -2,6 +2,7 @@ import { MapTesselator } from "../geometry/map-tesselator";
 import * as aa_math from "../math";
 import { CollisionData } from "../physics/collision-data";
 import { vec3 } from "gl-matrix";
+import { UIntStack } from "../utils/stack";
 
 /**
  * Encapsulates the rendering and collision detection within a Build engine map
@@ -15,7 +16,22 @@ for(let i = 0; i < COLLISION_DATA_BUFFER_SIZE; ++i)
 const buffers = new Array(3);
 var indexCount = 0;
 
+const visitedSectorSet = new Set();
+const pendingSectorStack = new UIntStack(32);
+
 export class LevelMap{
+    static get collisionDataBuffer(){
+        return collisionDataBuffer;
+    }
+
+    static get visitedSectorSet(){
+        return visitedSectorSet;
+    }
+
+    static get pendingSectorStack(){
+        return pendingSectorStack;
+    }
+
     constructor(src, sectors, walls, playerPos, playerRotation, playerSectorIndex){
         var m = this;
         m.src = src;
@@ -149,26 +165,6 @@ export class LevelMap{
                 ref1 = this.walls[ref0.point2];
 
             sector.setSlopeReference(ref0, ref1);
-
-            // //Cache heights - this should rarely change for most of the map
-            // let walls = this.walls
-            //     .slice(sector.wallptr, sector.wallptr + sector.wallnum)
-            //     .forEach(wall => {
-            //         console.log(wall);
-            //         const nextSector = this.sectors[wall.nextsector];
-
-            //         const heights = new Float32Array(4);
-
-            //         heights[0] = sector.getFloorHeight(wall.x, wall.y);
-            //         heights[1] = sector.getCeilingHeight(wall.x, wall.y);
-
-            //         if(!!nextSector){
-            //             heights[2] = nextSector.getFloorHeight(wall.x, wall.y)
-            //             heights[3] = nextSector.getCeilingHeight(wall.x, wall.y);
-            //         }
-
-            //         wall.heights = heights;
-            //     });
         });
     }
 
@@ -287,6 +283,7 @@ export class LevelMap{
         collisionDataResult.hasCollision = false;
         return collisionDataResult;
     }
+
 //     testCollisionWithRigidBody(rigidBody){
 //         const previousSector = rigidBody.sectorPtr;
 //         rigidBody.sectorPtr = this.determineSector(rigidBody.sectorPtr, rigidBody.pos[0], rigidBody.pos[2]);
