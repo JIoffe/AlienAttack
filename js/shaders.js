@@ -160,7 +160,7 @@ const FragmentShaders = {
         uniform samplerCube uSamplerCube;
         varying highp vec3 vNorm;
         void main(void) {                
-            gl_FragColor = textureCube(uSamplerCube, normalize(vNorm));
+            gl_FragColor = textureCube(uSamplerCube, vNorm);
         }        
         `,
     reflective:

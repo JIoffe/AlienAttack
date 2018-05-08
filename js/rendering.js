@@ -125,7 +125,6 @@ export class Renderer{
 
         //The 3x3 inverse transpose of the MV matrix can transform normals
         mat4.transpose(this.invTranspose, this.modelViewMatrix);
-        mat4.invert(this.invTranspose, this.invTranspose);
         mat3.fromMat4(this.normalMatrix, this.invTranspose);
 
         //Pre-multiply the projection matrix
