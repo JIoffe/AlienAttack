@@ -90,6 +90,11 @@ export class Scene{
         }else if(input.moveBackward){
             player.moveForward2d(-PLAYER_MOVEMENT_SPEED);
             isMoving = true;
+        }else{
+            //Negate forward/backward velocity. Player stops on a dime!
+            player.velocity[0] = 0;
+            player.velocity[1] = 0;
+            player.velocity[2] = 0;
         }
 
         if(input.strafeLeft){

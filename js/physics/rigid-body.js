@@ -138,12 +138,11 @@ export class RigidBody{
         vec3.normalize(aa_math.VEC3_TEMP, aa_math.VEC3_TEMP);
 
         this.velocity[0] = aa_math.VEC3_TEMP[0] * velocity;
-        //this.pos[1] += aa_math.VEC3_TEMP[1] * d;
         this.velocity[2] = aa_math.VEC3_TEMP[2] * velocity;
     }
 
     /**
-     * Propels the rigid body sideways instantly without residual effects. Meant for user controlled objects.
+     * Propels the rigid body sideways instantly without residual effects. Meant for user controlled objects. Use after moveForward2d
      * @param {number} velocity 
      * @param {Time} time 
      */
@@ -152,9 +151,8 @@ export class RigidBody{
         aa_math.VEC3_TEMP[1] = 0;
         vec3.normalize(aa_math.VEC3_TEMP, aa_math.VEC3_TEMP);
 
-        this.velocity[0] = aa_math.VEC3_TEMP[0] * velocity;
-        //this.pos[1] += aa_math.VEC3_TEMP[1] * d;
-        this.velocity[2] = aa_math.VEC3_TEMP[2] * velocity;
+        this.velocity[0] += aa_math.VEC3_TEMP[0] * velocity;
+        this.velocity[2] += aa_math.VEC3_TEMP[2] * velocity;
     }
 
     /**
