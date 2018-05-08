@@ -29,7 +29,7 @@ const FIRE_ANIM_DELAY = 200;
 var fireAnimTime = 0;
 var firedSemiAuto = false;
 
-const LASER_SPEED = 25;
+const LASER_SPEED = 50;
 
 //Projectile Constants
 const MAX_PROJECTILES = 64;

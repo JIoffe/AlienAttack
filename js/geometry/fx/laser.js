@@ -5,7 +5,7 @@ var renderable;
 export class Laser{
     static initializeGeometry(gl){
         const laserWidth = 0.02,
-            laserLength = 1.2;
+            laserLength = 1.8;
     
         let vertices = [-laserWidth, laserWidth, 0.0,
                         laserWidth, laserWidth, 0.0,

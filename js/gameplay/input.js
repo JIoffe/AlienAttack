@@ -8,12 +8,12 @@ const TURN_RIGHT = 32
 const JUMP = 64
 const CROUCH = 128
 const FIRE = 256
-
-var semiAutoFire = false;
+const SEMI_AUTO_FIRE_READY = 512
+const SEMI_AUTO_FIRE = FIRE | SEMI_AUTO_FIRE_READY;
 
 export class InputListener{
     constructor(document){
-        this.inputStateFlags = 0;
+        this.inputStateFlags = SEMI_AUTO_FIRE_READY;
         this.mouselook = false;
 
         this.mouseX = 0;
@@ -30,10 +30,10 @@ export class InputListener{
 
         document.addEventListener('click', ev => {
             if(this.mouselook){
-                semiAutoFire = true;
                 this.inputStateFlags |= FIRE
             }
         });
+
         document.addEventListener("keydown", ev => {
             //console.log('Pushed '  + ev.keyCode);
             switch (ev.keyCode){
@@ -64,7 +64,6 @@ export class InputListener{
                     this.inputStateFlags |= CROUCH
                     break    
                 case 17:
-                    semiAutoFire = true;
                     this.inputStateFlags |= FIRE
                     break;
                 default:
@@ -102,6 +101,7 @@ export class InputListener{
                     break                
                 case 17:
                     this.inputStateFlags &= ~FIRE
+                    this.inputStateFlags |= SEMI_AUTO_FIRE_READY;
                     break;                         
                 default:
                     break
@@ -126,16 +126,17 @@ export class InputListener{
             element.removeEventListener('click', getPointerLock);
         }
     }
+
     /**
-     * Returns true on the first frame the user engages fire
+     * True only on the first frame that the fire button is pressed
      */
     get semiAutoFire(){
-        if(semiAutoFire == true){
-            semiAutoFire = false;
-            return true;
+        if(this.inputStateFlags & SEMI_AUTO_FIRE ^ SEMI_AUTO_FIRE){
+            return false;
         }
-        
-        return false;
+
+        this.inputStateFlags &= ~SEMI_AUTO_FIRE_READY;
+        return true;
     }
 
     get moveForward(){
