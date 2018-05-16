@@ -93,7 +93,6 @@ export class Scene{
         }else{
             //Negate forward/backward velocity. Player stops on a dime!
             player.velocity[0] = 0;
-            player.velocity[1] = 0;
             player.velocity[2] = 0;
         }
 
@@ -116,9 +115,11 @@ export class Scene{
         this.weaponOffset[0] = 1.7;
         this.weaponOffset[1] = -2;
         this.weaponOffset[2] = -4.2;
+
+        isMoving = true;
         if(isMoving){
-            this.weaponOffset[0] += Math.sin(time.elapsedSeconds * 3.5) * 0.2;
-            this.weaponOffset[1] += Math.abs(Math.cos(time.elapsedSeconds * 4.5)) * 0.35;
+            this.weaponOffset[0] += 0;//(time.elapsedMS % 200 - 100) / 100 * 0.3;
+            this.weaponOffset[1] += 0;//time.elapsedMS % 200 * 0.035;
         }else{
             player.velocity[0] = 0;
             player.velocity[2] = 0;
@@ -149,12 +150,28 @@ export class Scene{
 
     firePrimaryWeapon(){
         if(this.nProjectiles >= MAX_PROJECTILES){
+            //TODO - ... recycle like the others? the player can cancel out a barrage by unleashing his own!
             return;
         }
 
-        quat.fromEuler(this.weaponRecoil, 45, 15, 0);
+        //Figure out where the user's looking and adjust the projectile accordingly
+        const playerForward = this.player.forward;
 
-        //TODO - avoid allocations here
+        const collisionData = this.map.rayTrace(this.player.pos[0], this.player.pos[1], this.player.pos[2], playerForward[0], playerForward[1], playerForward[2], this.player.sectorPtr);
+        const targetPosition = collisionData.point;
+        if(!collisionData.hasCollision){
+            //How can this happen? We must be floating around aimlessly in space
+            targetPosition[0] = 0;
+            targetPosition[1] = 0;
+            targetPosition[2] = -10;
+
+            vec3.transformQuat(targetPosition, targetPosition, this.player.rot);
+            vec3.add(targetPosition, targetPosition, this.player.pos);
+        }
+
+
+        //throw back the weapon
+        quat.fromEuler(this.weaponRecoil, 45, 15, 0);
 
         //Our view of the primary weapon is offset,
         //so we have to compensate to make it appear that 
@@ -171,15 +188,9 @@ export class Scene{
         projectile.pos[1] = -0.25;
         projectile.pos[2] = 2.0;
 
-        //Target 10 units in front of us
-        const targetPosition = new Float32Array([0,0,-10]);
-
-        vec3.transformQuat(targetPosition, targetPosition, this.player.rot);
         vec3.transformQuat(projectile.pos, projectile.pos, this.player.rot);
-
-        vec3.add(targetPosition, targetPosition, this.player.pos);
         vec3.add(projectile.pos, projectile.pos, this.player.pos);
-        projectile.sectorPtr = this.map.determineSector(-1, projectile.pos[0], projectile.pos[2]);
+        projectile.sectorPtr = this.map.determineSector(this.player.sectorPtr, projectile.pos[0], projectile.pos[2]);
 
         //        aa_math.lookAtRotation(projectile.rot, startingPosition, targetPosition);
 

@@ -28,9 +28,16 @@ export class InputListener{
 
         document.addEventListener('mousemove', this._onMouseLook.bind(this), false);
 
-        document.addEventListener('click', ev => {
+        document.addEventListener('mousedown', ev => {
             if(this.mouselook){
                 this.inputStateFlags |= FIRE
+            }
+        });
+
+        document.addEventListener('mouseup', ev => {
+            if(this.mouselook){
+                this.inputStateFlags &= ~FIRE
+                this.inputStateFlags |= SEMI_AUTO_FIRE_READY;
             }
         });
 

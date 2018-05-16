@@ -11,6 +11,8 @@ export const VEC3_LEFT = new Float32Array([-1, 0, 0]);
 export const VEC3_BACK = new Float32Array([0, 0, -1]);
 export const VEC3_UP = new Float32Array([0,1,0]);
 
+export const EPSILON = 1e-6;
+
 export const QUAT_IDENTITY = (() => {
     let q = quat.create();
     quat.identity(q);
@@ -127,12 +129,99 @@ export function rayLineSegmentIntersection(out, rayOriginX, rayOriginY, rayDirec
         return;
     }
 
+    out.t = t;
     out.point[0] = lx0 + sx*u;
     out.point[1] = 0;
     out.point[2] = ly0 + sy*u;
+
+    out.surfaceNormal[0] = -sy;
+    out.surfaceNormal[1] = 0;
+    out.surfaceNormal[2] = sx;
+
+    vec3.normalize(out.surfaceNormal, out.surfaceNormal);
+    
     out.hasCollision = true;
 }
 
+/**
+ * Determines the intersection point between a ray and a plane in 3D
+ * @param {*} out CollidionData
+ * @param {number} rayOriginX
+ * @param {number} rayOriginY 
+ * @param {number} rayOriginZ 
+ * @param {number} rayDirectionX 
+ * @param {number} rayDirectionY 
+ * @param {number} rayDirectionZ 
+ * @param {number} planeNormX 
+ * @param {number} planeNormY 
+ * @param {number} planeNormZ 
+ * @param {number} planeD 
+ */
+export function rayIntersectsPlane(out, rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, planeNormX, planeNormY, planeNormZ, planeD){
+    //Reject if ray is not facing plane
+    const incidence = planeNormX * rayDirectionX + planeNormY * rayDirectionY + planeNormZ * rayDirectionZ;
+    if(incidence > 0){
+        out.hasCollision = false;
+        return;
+    }
+    const PNdotRO = planeNormX * -rayOriginX + planeNormY * (planeD - rayOriginY) + planeNormZ * -rayOriginZ,
+        t = PNdotRO / incidence;
+
+    if(t < 0){
+        //collision behind ray, ignore
+        out.hasCollision = false;
+        return;
+    }
+
+    out.t = t;
+    out.point[0] = rayOriginX + rayDirectionX * t;
+    out.point[1] = rayOriginY + rayDirectionY * t;
+    out.point[2] = rayOriginZ + rayDirectionZ * t;
+    out.surfaceNormal[0] = planeNormX;
+    out.surfaceNormal[1] = planeNormY;
+    out.surfaceNormal[2] = planeNormZ;
+    out.hasCollision = true;
+}
+
+/**
+ * Determines the intersection point between a line segment and a plane in 3D
+ * @param {*} out CollidionData
+ * @param {number} rayOriginX
+ * @param {number} rayOriginY 
+ * @param {number} rayOriginZ 
+ * @param {number} rayDirectionX 
+ * @param {number} rayDirectionY 
+ * @param {number} rayDirectionZ 
+ * @param {number} planeNormX 
+ * @param {number} planeNormY 
+ * @param {number} planeNormZ 
+ * @param {number} planeD 
+ */
+export function lineSegmentIntersectsPlane(out, rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, planeNormX, planeNormY, planeNormZ, planeD){
+    //Reject if ray is not facing plane
+    const incidence = planeNormX * rayDirectionX + planeNormY * rayDirectionY + planeNormZ * rayDirectionZ;
+    if(incidence > 0){
+        out.hasCollision = false;
+        return;
+    }
+    const PNdotRO = planeNormX * -rayOriginX + planeNormY * (planeD - rayOriginY) + planeNormZ * -rayOriginZ,
+        t = PNdotRO / incidence;
+
+    if(t < 0 || t >= 1){
+        //collision behind ray, ignore
+        out.hasCollision = false;
+        return;
+    }
+
+    out.t = t;
+    out.point[0] = rayOriginX + rayDirectionX * t;
+    out.point[1] = rayOriginY + rayDirectionY * t;
+    out.point[2] = rayOriginZ + rayDirectionZ * t;
+    out.surfaceNormal[0] = planeNormX;
+    out.surfaceNormal[1] = planeNormY;
+    out.surfaceNormal[2] = planeNormZ;
+    out.hasCollision = true;
+}
 export function lineSegmentIntersection(out, l0x0, l0y0, l0x1, l0y1, l1x0, l1y0, l1x1, l1y1){
     //Project the ends onto each other, assume that the first operand is the testee,
     //eg. a flying projectile path and the second one is more static
@@ -176,6 +265,7 @@ export function lineSegmentIntersection(out, l0x0, l0y0, l0x1, l0y1, l1x0, l1y0,
         return;
     }
 
+    out.t = t;
     out.point[0] = l0x0 + t * rx;
     out.point[1] = 0;
     out.point[2] = l0y0 + t * ry;

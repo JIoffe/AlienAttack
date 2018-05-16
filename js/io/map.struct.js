@@ -8,7 +8,7 @@ import { UIntStack } from "../utils/stack";
  * Encapsulates the rendering and collision detection within a Build engine map
  */
 
-const COLLISION_DATA_BUFFER_SIZE = 10;
+const COLLISION_DATA_BUFFER_SIZE = 16;
 const collisionDataBuffer = new Array(COLLISION_DATA_BUFFER_SIZE);
 for(let i = 0; i < COLLISION_DATA_BUFFER_SIZE; ++i)
     collisionDataBuffer[i] = new CollisionData();
@@ -168,120 +168,219 @@ export class LevelMap{
         });
     }
 
-    testCollisionWithProjectile(prevPosition, prevSector, newPosition){
-        //Cache some values of the line segment for back-face culling
-        const lx0 = prevPosition[0],
-            lx1 = newPosition[0],
-            ly0 = prevPosition[2],
-            ly1 = newPosition[2],
-            crossA = lx1 - lx0,
-            crossB = ly1 - ly0;
+    lineSegmentTrace(p0x, p0y, p0z, p1x, p1y, p1z, sectorPtr){
+        //Similar to rayTrace. Copied over to prevent needless checks
+        const la = p1x - p0x, lb = p1y - p0y, lc = p1z - p0z;
 
-        let collisionDataResult = collisionDataBuffer[0];
+        const collisionData = collisionDataBuffer[0], collisionQuery = collisionDataBuffer[1];
+        collisionData.hasCollision = false;
 
-        collisionDataResult.hasCollision = false;
-        collisionDataResult.sectorPtr = prevSector;
+        let continueScanning, furthestDistance = 0, nearestDistance = 100000, hasTerminated = false;
 
-
-        let continueScanning = true, activeSector = prevSector;
-
-        while(continueScanning){
-            const sector = this.sectors[activeSector];
-            let collisionData = collisionDataBuffer[0];
-
-            //First test against floor/ceiling
-            const floorHeight = sector.getFloorHeight(newPosition[0], newPosition[2]);
-            if(floorHeight > newPosition[1]){
-                collisionData.hasCollision = true;
-                vec3.copy(collisionData.point, newPosition);
-                collisionData.point[1] = floorHeight;
-                vec3.copy(collisionData.surfaceNormal, sector.floorNormal);
-                collisionData.picnum = sector.floorpicnum;
-                return collisionData;
-            }
-
-            const ceilingHeight = sector.getCeilingHeight(newPosition[0], newPosition[2]);
-            if(ceilingHeight < newPosition[1]){
-                collisionData.hasCollision = true;
-                vec3.copy(collisionData.point, newPosition);
-                collisionData.point[1] = ceilingHeight;
-                vec3.copy(collisionData.surfaceNormal, sector.ceilingNormal);
-                collisionData.picnum = sector.ceilingpicnum;
-                return collisionData;      
-            }
-
-            const bounds = sector.getWallLoops(this.walls)[0],
-                n = bounds.length;
+        do{
+            const sector = this.sectors[sectorPtr],
+                end = sector.wallptr + sector.wallnum;
 
             continueScanning = false;
 
-            let nCollisions = 0;
-            for(let i = 0; i < n; ++i){
-                const wall = bounds[i];
+            let a,b,d;
 
-                //Ignore non-bounding walls
-                if(wall.nextsector === activeSector)
-                    continue;
+            let planeNormal, planed, planepicnum;
+            if(lb < 0){
+                planeNormal = sector.floorNormal;
+                planed = sector.floord;
+                planepicnum = sector.floorpicnum;
+            }else{
+                planeNormal = sector.ceilingNormal;
+                planed = sector.ceilingd;
+                planepicnum = sector.ceilingpicnum;
+            }
 
-                const isLeft = crossA * (wall.y - ly0) - crossB * (wall.x - lx0);
+            aa_math.lineSegmentIntersectsPlane(collisionQuery, p0x, p0y, p0z, la, lb, lc, planeNormal[0], planeNormal[1], planeNormal[2], planed);
+            if(collisionQuery.hasCollision && aa_math.insidePolygon(sector.getWallLoops(this.walls)[0], collisionQuery.point[0], collisionQuery.point[2])){
+                a = collisionQuery.point[0] - p0x;
+                b = collisionQuery.point[2] - p0z;
+                d = a*a + b*b;
 
-                //Ignore back facing surfaces - assume everything is watertight and we will make up for it
-                if(isLeft > 0)
-                    continue;
+                if(d < nearestDistance){
+                    collisionData.point[0] = collisionQuery.point[0];
+                    collisionData.point[1] = collisionQuery.point[1];
+                    collisionData.point[2] = collisionQuery.point[2];
+                    collisionData.surfaceNormal[0] = collisionQuery.surfaceNormal[0];
+                    collisionData.surfaceNormal[1] = collisionQuery.surfaceNormal[1];
+                    collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
+                    collisionData.hasCollision = true;
 
-                const point2 = this.walls[wall.point2];
-    
-                collisionData = collisionDataBuffer[nCollisions];
-                aa_math.lineSegmentIntersection(collisionData, prevPosition[0], prevPosition[2], newPosition[0], newPosition[2], wall.x, wall.y, point2.x, point2.y);
+                    collisionData.picnum = planepicnum;
 
-                if(collisionData.hasCollision){
-                    collisionData.sectorPtr = wall.nextsector;
-                    collisionData.wallptr = i;
-
-                    let terminalCollision = wall.nextsector === -1;
-                    if(!terminalCollision){
-                        const nextSector = this.sectors[wall.nextsector],
-                            x = collisionData.point[0],
-                            y = prevPosition[1],
-                            z = collisionData.point[2];
-                        terminalCollision = nextSector.getFloorHeight(x, z) > y || nextSector.getCeilingHeight(x, z) < y;
-                    }
-    
-                    if(terminalCollision){
-                        collisionData.hasCollision = true;
-                        collisionData.point[1] = prevPosition[1];
-                        collisionData.picnum = wall.picnum;
-
-                        return collisionData;
-                    }
-
-                    collisionData.hasCollision = false;
-
-                    ++nCollisions;
+                    nearestDistance = d;                    
                 }
             }
 
-            //Find the nearest intersection to the projectile
-            //and continue scanning in the next sector
-            if(nCollisions > 0){
-                let nearestSquaredDistance = vec3.squaredDistance(collisionDataBuffer[0], newPosition);
-                activeSector = collisionDataBuffer[0].sectorPtr;
+            for(let i = sector.wallptr; i < end; ++i){
+                const wall = this.walls[i],
+                    point2 = this.walls[wall.point2];
 
-                for(let i = 1; i < nCollisions; ++i){
-                    const collisionData = collisionDataBuffer[i],
-                        d = vec3.squaredDistance(collisionData, newPosition);
+                // //Ignore back facing surfaces - assume everything is watertight and we will make up for it
+                // if((point2.x - wall.x) * (p0z - wall.y) - (point2.y - wall.y) * (p0x - wall.x) < 0)
+                //     continue;
 
-                    if(d < nearestSquaredDistance){
-                        nearestSquaredDistance = d;
-                        activeSector = collisionData.sectorPtr;
+                aa_math.lineSegmentIntersection(collisionQuery, p0x, p0z, p1x, p1z, wall.x, wall.y, point2.x, point2.y);
+                if(collisionQuery.hasCollision){
+                    a = collisionQuery.point[0] - p0x;
+                    b = collisionQuery.point[2] - p0z;
+                    d = a*a + b*b;
+
+                    const x = collisionQuery.point[0], y = p0y + lb * collisionQuery.t, z = collisionQuery.point[2];
+
+                    let terminalCollision = wall.nextsector === -1;
+                    if(!terminalCollision){
+                        const nextSector = this.sectors[wall.nextsector];
+                        terminalCollision = nextSector.getFloorHeight(x, z) > y || nextSector.getCeilingHeight(x, z) < y;
+                    }
+
+                    if(terminalCollision){
+                        if(d < nearestDistance){
+                            collisionData.point[0] = x;
+                            collisionData.point[1] = y;
+                            collisionData.point[2] = z;
+                            collisionData.surfaceNormal[0] = collisionQuery.surfaceNormal[0];
+                            collisionData.surfaceNormal[1] = collisionQuery.surfaceNormal[1];
+                            collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
+                            collisionData.hasCollision = true;
+                            collisionData.picnum = wall.picnum;
+
+                            collisionData.wallptr = i;
+
+                            nearestDistance = d;
+                        }
+                        hasTerminated = true;
+                    }else if(!hasTerminated){
+                        if(d > furthestDistance){
+                            sectorPtr = wall.nextsector;
+                            furthestDistance = d;
+                            continueScanning = true;
+                        }
                     }
                 }
-                continueScanning = true;
-            }  
-        }
+            }
+        }while(!hasTerminated && continueScanning);
 
-        collisionDataResult.hasCollision = false;
-        return collisionDataResult;
+        return collisionData;
+    }
+
+    /**
+     * Traces a 3D ray against the map's walls and floors
+     * @param {Number} rayOriginX 
+     * @param {Number} rayOriginY 
+     * @param {Number} rayOriginZ 
+     * @param {Number} rayDirectionX 
+     * @param {Number} rayDirectionY 
+     * @param {Number} rayDirectionZ 
+     * @param {Number} sectorPtr The sector from which to start the ray cast
+     * @returns {CollisionData} Nearest collision against the origin of the ray (if any)
+     */
+    rayTrace(rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, sectorPtr){
+        const collisionData = collisionDataBuffer[0], collisionQuery = collisionDataBuffer[1];
+        collisionData.hasCollision = false;
+
+        let continueScanning;
+        sectorPtr = this.determineSector(sectorPtr, rayOriginX, rayOriginZ);
+
+        //Here's the idea:
+        //On each pass of a sector's walls, we want to keep either:
+        //the nearest collision that terminates the ray 
+        //the furthest collision that leads to a new sector if no collisions terminate the ray
+        let furthestDistance = 0, nearestDistance = 10000, hasTerminated = false;
+
+        do{
+            const sector = this.sectors[sectorPtr],
+                end = sector.wallptr + sector.wallnum;
+
+            continueScanning = false;
+
+            let a,b,d;
+
+            let planeNormal, planed, planepicnum;
+            if(rayDirectionY < 0){
+                planeNormal = sector.floorNormal;
+                planed = sector.floord;
+                planepicnum = sector.floorpicnum;
+            }else{
+                planeNormal = sector.ceilingNormal;
+                planed = sector.ceilingd;
+                planepicnum = sector.ceilingpicnum;
+            }
+
+            aa_math.rayIntersectsPlane(collisionQuery, rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, planeNormal[0], planeNormal[1], planeNormal[2], planed);
+            if(collisionQuery.hasCollision && aa_math.insidePolygon(sector.getWallLoops(this.walls)[0], collisionQuery.point[0], collisionQuery.point[2])){
+                a = collisionQuery.point[0] - rayOriginX;
+                b = collisionQuery.point[2] - rayOriginZ;
+                d = a*a + b*b;
+
+                if(d < nearestDistance){
+                    collisionData.point[0] = collisionQuery.point[0];
+                    collisionData.point[1] = collisionQuery.point[1];
+                    collisionData.point[2] = collisionQuery.point[2];
+                    collisionData.surfaceNormal[0] = collisionQuery.surfaceNormal[0];
+                    collisionData.surfaceNormal[1] = collisionQuery.surfaceNormal[1];
+                    collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
+                    collisionData.hasCollision = true;
+
+                    collisionData.sectorPtr = sectorPtr;
+                    collisionData.picnum = planepicnum;
+
+                    nearestDistance = d;                    
+                }
+            }
+
+            for(let i = sector.wallptr; i < end; ++i){
+                const wall = this.walls[i],
+                    point2 = this.walls[wall.point2];
+    
+                aa_math.rayLineSegmentIntersection(collisionQuery, rayOriginX, rayOriginZ, rayDirectionX, rayDirectionZ, wall.x, wall.y, point2.x, point2.y);
+                if(collisionQuery.hasCollision){
+                    a = collisionQuery.point[0] - rayOriginX;
+                    b = collisionQuery.point[2] - rayOriginZ;
+                    d = a*a + b*b;
+
+                    const x = collisionQuery.point[0], y = rayOriginY + rayDirectionY * collisionQuery.t, z = collisionQuery.point[2];
+
+                    let terminalCollision = wall.nextsector === -1;
+                    if(!terminalCollision){
+                        const nextSector = this.sectors[wall.nextsector];
+                        terminalCollision = nextSector.getFloorHeight(x, z) > y || nextSector.getCeilingHeight(x, z) < y;
+                    }
+
+                    if(terminalCollision){
+                        if(d < nearestDistance){
+                            collisionData.point[0] = x;
+                            collisionData.point[1] = y;
+                            collisionData.point[2] = z;
+                            collisionData.surfaceNormal[0] = collisionQuery.surfaceNormal[0];
+                            collisionData.surfaceNormal[1] = collisionQuery.surfaceNormal[1];
+                            collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
+                            collisionData.hasCollision = true;
+
+                            collisionData.wallptr = i;
+                            collisionData.sectorPtr = wall.nextsector;
+                            collisionData.picnum = wall.picnum;
+
+                            nearestDistance = d;
+                        }
+                        hasTerminated = true;
+                    }else if(!hasTerminated){
+                        if(d > furthestDistance){
+                            sectorPtr = wall.nextsector;
+                            furthestDistance = d;
+                            continueScanning = true;
+                        }
+                    }
+                }
+            }
+        }while(!hasTerminated && continueScanning);
+
+        return collisionData;
     }
 
 //     testCollisionWithRigidBody(rigidBody){

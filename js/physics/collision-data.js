@@ -3,6 +3,7 @@ import { vec3 } from "gl-matrix";
 export class CollisionData{
     constructor(){
         this.hasCollision = false;
+        this.t = 0;
         this.surfaceNormal = vec3.create();
         this.point = vec3.create();
         this.sectorPtr = -1;

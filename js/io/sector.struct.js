@@ -117,6 +117,9 @@ export class Sector{
 
         this.floorNormal = this.computeFloorNormal();
         this.ceilingNormal = this.computeCeilingNormal();
+
+        this.floord = this.getFloorHeight(0,0);
+        this.ceilingd = this.getCeilingHeight(0,0);
     }
 
     getNeighboringSectors(walls){
