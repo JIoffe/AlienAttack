@@ -3,6 +3,7 @@ import * as aa_math from "../math";
 import { CollisionData } from "../physics/collision-data";
 import { vec3 } from "gl-matrix";
 import { UIntStack } from "../utils/stack";
+import { wallTexDimensY } from "../art";
 
 /**
  * Encapsulates the rendering and collision detection within a Build engine map
@@ -136,8 +137,32 @@ export class LevelMap{
     }
 
     isInSector(i, x, y){
-        let bounds = this.sectors[i].getWallLoops(this.walls)[0];
-        return aa_math.insidePolygon(bounds, x, y);
+        const sector = this.sectors[i],
+            end = sector.wallptr + sector.wallnum;
+
+        let count = 0, y0, y1, x0, x1, t, u, sx, sy;
+
+        for(let i = sector.wallptr; i < end; ++i){
+            const wall = this.walls[i],
+                point2 = this.walls[wall.point2];
+
+            y0 = y - wall.y; y1 = y - point2.y;
+
+            if((y0 > 0) !== (y1 > 0)){
+                sx = point2.x - wall.x;
+                sy = point2.y - wall.y;
+
+                t = ((wall.x * sy - wall.y * sx) - (x * sy - y * sx)) / sy;
+                if(t < 0)
+                    continue;
+
+                u = y0 / sy;
+                if(u > 0 && u < 1)
+                    ++count;
+            }
+        }
+
+        return count & 1 !== 0;
     }
 
     searchForSectorIndex(x, y){
@@ -145,11 +170,8 @@ export class LevelMap{
             walls = this.walls;
 
         for(let i = 0; i < sectors.length; ++i){
-            let bounds = sectors[i].getWallLoops(walls)[0];
-
-            if(aa_math.insidePolygon(bounds, x, y)){
+            if(this.isInSector(i, x, y))
                 return i;
-            }
         }
 
         return -1;
@@ -169,23 +191,25 @@ export class LevelMap{
     }
 
     lineSegmentTrace(p0x, p0y, p0z, p1x, p1y, p1z, sectorPtr){
-        //Similar to rayTrace. Copied over to prevent needless checks
+        //Similar to rayTrace, but different enough to warrent a separate function to reduce additional checks
         const la = p1x - p0x, lb = p1y - p0y, lc = p1z - p0z;
 
+        //Essentially double buffering - when a potential collision check is the best candidate, copy it to our result set
         const collisionData = collisionDataBuffer[0], collisionQuery = collisionDataBuffer[1];
         collisionData.hasCollision = false;
 
-        let continueScanning, furthestDistance = 0, nearestDistance = 100000, hasTerminated = false;
+        let continueScanning, furthestDistance = 0, nearestDistance = 1000000, hasTerminated = false, terminalCollision;
+        let a,b,d;
+        let planeNormal, planed, planepicnum;
+        
+        pendingSectorStack.clear();
 
         do{
             const sector = this.sectors[sectorPtr],
                 end = sector.wallptr + sector.wallnum;
 
-            continueScanning = false;
-
-            let a,b,d;
-
-            let planeNormal, planed, planepicnum;
+            //If line segment moving down, check for collision against floor.
+            //Otherwise, check against ceiling
             if(lb < 0){
                 planeNormal = sector.floorNormal;
                 planed = sector.floord;
@@ -197,7 +221,7 @@ export class LevelMap{
             }
 
             aa_math.lineSegmentIntersectsPlane(collisionQuery, p0x, p0y, p0z, la, lb, lc, planeNormal[0], planeNormal[1], planeNormal[2], planed);
-            if(collisionQuery.hasCollision && aa_math.insidePolygon(sector.getWallLoops(this.walls)[0], collisionQuery.point[0], collisionQuery.point[2])){
+            if(collisionQuery.hasCollision){
                 a = collisionQuery.point[0] - p0x;
                 b = collisionQuery.point[2] - p0z;
                 d = a*a + b*b;
@@ -215,30 +239,31 @@ export class LevelMap{
 
                     nearestDistance = d;                    
                 }
+
+                hasTerminated = true;
             }
 
             for(let i = sector.wallptr; i < end; ++i){
                 const wall = this.walls[i],
                     point2 = this.walls[wall.point2];
-
-                // //Ignore back facing surfaces - assume everything is watertight and we will make up for it
-                // if((point2.x - wall.x) * (p0z - wall.y) - (point2.y - wall.y) * (p0x - wall.x) < 0)
-                //     continue;
-
+    
+                //Ignore backfacing
+                if(la * (wall.y - point2.y) + lc * (point2.x - wall.x) > 0)
+                    continue;
+    
                 aa_math.lineSegmentIntersection(collisionQuery, p0x, p0z, p1x, p1z, wall.x, wall.y, point2.x, point2.y);
-                if(collisionQuery.hasCollision){
-                    a = collisionQuery.point[0] - p0x;
-                    b = collisionQuery.point[2] - p0z;
-                    d = a*a + b*b;
-
+                if(collisionQuery.hasCollision){    
                     const x = collisionQuery.point[0], y = p0y + lb * collisionQuery.t, z = collisionQuery.point[2];
-
-                    let terminalCollision = wall.nextsector === -1;
+                    a = x - p0x;
+                    b = z - p0z;
+                    d = a*a + b*b;
+    
+                    terminalCollision = wall.nextsector === -1;
                     if(!terminalCollision){
                         const nextSector = this.sectors[wall.nextsector];
                         terminalCollision = nextSector.getFloorHeight(x, z) > y || nextSector.getCeilingHeight(x, z) < y;
                     }
-
+                
                     if(terminalCollision){
                         if(d < nearestDistance){
                             collisionData.point[0] = x;
@@ -249,22 +274,24 @@ export class LevelMap{
                             collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
                             collisionData.hasCollision = true;
                             collisionData.picnum = wall.picnum;
-
+    
                             collisionData.wallptr = i;
-
                             nearestDistance = d;
                         }
                         hasTerminated = true;
                     }else if(!hasTerminated){
                         if(d > furthestDistance){
-                            sectorPtr = wall.nextsector;
+                            collisionData.sectorPtr = wall.nextsector;
                             furthestDistance = d;
-                            continueScanning = true;
                         }
+
+                        pendingSectorStack.push(wall.nextSector);
                     }
+    
                 }
             }
-        }while(!hasTerminated && continueScanning);
+        }while((sectorPtr = pendingSectorStack.pop()) !== -1);
+
 
         return collisionData;
     }
@@ -382,71 +409,4 @@ export class LevelMap{
 
         return collisionData;
     }
-
-//     testCollisionWithRigidBody(rigidBody){
-//         const previousSector = rigidBody.sectorPtr;
-//         rigidBody.sectorPtr = this.determineSector(rigidBody.sectorPtr, rigidBody.pos[0], rigidBody.pos[2]);
-//         if(rigidBody.sectorPtr === -1){
-//             vec3.copy(collisionData.point, rigidBody.pos);
-//             collisionData.surfaceNormal[0] = -rigidBody.velocity[0];
-//             collisionData.surfaceNormal[1] = -rigidBody.velocity[1];
-//             collisionData.surfaceNormal[2] = -rigidBody.velocity[2];
-//             vec3.normalize(collisionData.surfaceNormal, collisionData.surfaceNormal);
-
-//             collisionData.hasCollision = true;
-//             return collisionData;
-//         }
-
-//         collisionData.hasCollision = false;
-
-//         const bounds = this.sectors[rigidBody.sectorPtr].getWallLoops(this.walls)[0],
-//             n = bounds.length,
-//             px = rigidBody.pos[0],
-//             py = rigidBody.pos[2];
-
-//         const cr = 1;
-
-//         for(let i = 0; i < n; ++i){
-//             const wall = bounds[i];
-//             if(wall.nextsector !== -1)
-//                 continue;
-
-//             const point2 = this.walls[wall.point2];
-
-//             //project vector u onto v,
-//             //where u is the vector to the rigidBody from wall point 1
-//             //and v is the vector from wall point 1 to wall point 2
-//             const ux = px - wall.x,
-//                 uy = px - wall.y,
-//                 vx = point2.x - wall.x,
-//                 vy = point2.y - wall.y;
-
-//             const mv = vx*vx + vy*vy,
-//                 s = (ux * vx + uy * vy) / mv,
-//                 projx = s * vx,
-//                 projy = s * vy,
-//                 rx = wall.x + projx,
-//                 ry = wall.y + projy;
-// //(Math.sign(rx - wall.x) !== Math.sign(rx - point2.x) && Math.sign(ry - wall.y) !== Math.sign(ry - point2.y))  &&
-//             if( (Math.pow(rx - px, 2) + Math.pow(ry - py, 2)) < cr * cr){
-//                 console.log('hit a wall!');
-//                 collisionData.hasCollision = true;
-
-//                 collisionData.point[0] = rx;
-//                 collisionData.point[1] = rigidBody.pos[1];
-//                 collisionData.point[2] = ry;
-
-//                 //The nice thing about walls is that they are all perfectly straight :)
-//                 collisionData.surfaceNormal[0] = px - rx;
-//                 collisionData.surfaceNormal[1] = 0;
-//                 collisionData.surfaceNormal[2] = py - ry;
-
-//                 vec3.normalize(collisionData.surfaceNormal, collisionData.surfaceNormal);
-
-//                 return collisionData;
-//             }
-//         }
-
-//         return collisionData;
-//     }
 }

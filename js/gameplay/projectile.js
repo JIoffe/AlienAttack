@@ -21,7 +21,7 @@ export class Projectile extends RigidBody{
 
     update(time, scene){
         const p0 = this.pos;
-        this.sectorPtr = scene.map.determineSector(this.sectorPtr, p0[0], p0[2]);
+        
         if(this.sectorPtr === -1){
             this.kill();
             return;
@@ -47,6 +47,7 @@ export class Projectile extends RigidBody{
             p0[0] = NEXT_POS[0];
             p0[1] = NEXT_POS[1];
             p0[2] = NEXT_POS[2];
+            this.sectorPtr = scene.map.determineSector(collisionData.sectorPtr, p0[0], p0[2]);
         }
     }
 }

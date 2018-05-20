@@ -25,4 +25,8 @@ export class UIntStack{
 
         return this.elements[this.n - 1];
     }
+
+    clear(){
+        this.n = 0;
+    }
 }

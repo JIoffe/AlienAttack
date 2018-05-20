@@ -13,6 +13,8 @@ export const VEC3_UP = new Float32Array([0,1,0]);
 
 export const EPSILON = 1e-6;
 
+const onePlusEpsilon = 1 + EPSILON;
+
 export const QUAT_IDENTITY = (() => {
     let q = quat.create();
     quat.identity(q);
@@ -247,7 +249,7 @@ export function lineSegmentIntersection(out, l0x0, l0y0, l0x1, l0y1, l1x0, l1y0,
     const RxS = (rx * sy - ry * sx);
     const t = ((l1x0 * sy - l1y0 * sx) - (l0x0 * sy - l0y0 * sx)) / RxS;
 
-    if(t < 0 || t > 1.0){
+    if(t < 0 || t > onePlusEpsilon){
         out.hasCollision = false;
         return;
     }
@@ -260,7 +262,8 @@ export function lineSegmentIntersection(out, l0x0, l0y0, l0x1, l0y1, l1x0, l1y0,
     //u = (l0p0 X R - l1p0 X R) / (S X R)
 
     const u = ((l0x0 * ry - l0y0 * rx) - (l1x0 * ry - l1y0 * rx)) / -RxS;
-    if(u < 0 || u > 1.0){
+
+    if(u < 0 || u > onePlusEpsilon){
         out.hasCollision = false;
         return;
     }
