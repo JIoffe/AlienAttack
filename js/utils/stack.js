@@ -16,7 +16,7 @@ export class UIntStack{
         if(this.n === 0)
             return -1;
 
-        return this.elements[this.n-- - 1];
+        return this.elements[--this.n];
     }
 
     peek(){

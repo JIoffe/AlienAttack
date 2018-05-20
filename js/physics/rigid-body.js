@@ -47,73 +47,73 @@ export class RigidBody{
             
             //Check against walls
             //Limit the search to sectors that the rigid body volume intersects
-            const walls = map.walls,
-                cd = LevelMap.collisionDataBuffer[0],
-                visitedSectorSet = LevelMap.visitedSectorSet,
-                pendingSectorStack = LevelMap.pendingSectorStack;
+            // const walls = map.walls,
+            //     cd = LevelMap.collisionDataBuffer[0],
+            //     visitedSectorSet = LevelMap.visitedSectorSet,
+            //     pendingSectorStack = LevelMap.pendingSectorStack;
 
-            visitedSectorSet.clear();
-            pendingSectorStack.n = 0;
+            // visitedSectorSet.clear();
+            // pendingSectorStack.n = 0;
 
-            let sectorPtr = this.sectorPtr;
+            // let sectorPtr = this.sectorPtr;
 
-            do{
-                if(visitedSectorSet.has(sectorPtr)){
-                    sectorPtr = pendingSectorStack.pop();
-                    continue;
-                }
+            // do{
+            //     if(visitedSectorSet.has(sectorPtr)){
+            //         sectorPtr = pendingSectorStack.pop();
+            //         continue;
+            //     }
 
-                const sector = map.sectors[sectorPtr],
-                    end = sector.wallptr + sector.wallnum;
+            //     const sector = map.sectors[sectorPtr],
+            //         end = sector.wallptr + sector.wallnum;
 
-                let nCollisions = 0, collisionDisplacementX = 0, collisionDisplacementY = 0;
+            //     let nCollisions = 0, collisionDisplacementX = 0, collisionDisplacementY = 0;
 
-                for(let i = 0; i < end; ++i){
-                    const wall = walls[i];                  
-                    const point2 = walls[wall.point2];
+            //     for(let i = 0; i < end; ++i){
+            //         const wall = walls[i];                  
+            //         const point2 = walls[wall.point2];
         
-                    aa_math.circleLineSegmentIntersection(cd, nextX, nextZ, this.radius, wall.x, wall.y, point2.x, point2.y);
-                    if(cd.hasCollision){
-                        //Check if this collision should block the player or not
-                        let blocking = wall.nextsector === -1;
+            //         aa_math.circleLineSegmentIntersection(cd, nextX, nextZ, this.radius, wall.x, wall.y, point2.x, point2.y);
+            //         if(cd.hasCollision){
+            //             //Check if this collision should block the player or not
+            //             let blocking = wall.nextsector === -1;
                         
-                        if(!blocking){
-                            const stepHeight = map.sectors[wall.nextsector].getFloorHeight(cd.point[0], cd.point[2]);
-                            if(stepHeight > stepUp){
-                                blocking = true;
-                            }else{
-                                const overhangDepth = map.sectors[wall.nextsector].getCeilingHeight(cd.point[0], cd.point[2]);
-                                if(overhangDepth < nextY + headOffset){
-                                    blocking = true;
-                                }else{
-                                    nextY = Math.max(stepHeight + 2.25, nextY);
-                                }
-                            }
-                        }
+            //             if(!blocking){
+            //                 const stepHeight = map.sectors[wall.nextsector].getFloorHeight(cd.point[0], cd.point[2]);
+            //                 if(stepHeight > stepUp){
+            //                     blocking = true;
+            //                 }else{
+            //                     const overhangDepth = map.sectors[wall.nextsector].getCeilingHeight(cd.point[0], cd.point[2]);
+            //                     if(overhangDepth < nextY + headOffset){
+            //                         blocking = true;
+            //                     }else{
+            //                         nextY = Math.max(stepHeight + 2.25, nextY);
+            //                     }
+            //                 }
+            //             }
     
-                        if(blocking){
-                            collisionDisplacementX += cd.point[0] + cd.surfaceNormal[0] * this.radius;
-                            collisionDisplacementY += cd.point[2] + cd.surfaceNormal[2] * this.radius;
-                            ++nCollisions;
-                        }else if(wall.nextsector !== -1){
-                            //Overallping into another sector and we need to check walls there too.
-                            //It's not likely to have too many walls in a particular sector, so it's not a big deal
-                            pendingSectorStack.push(wall.nextsector);
-                        }
-                    }
-                }
+            //             if(blocking){
+            //                 collisionDisplacementX += cd.point[0] + cd.surfaceNormal[0] * this.radius;
+            //                 collisionDisplacementY += cd.point[2] + cd.surfaceNormal[2] * this.radius;
+            //                 ++nCollisions;
+            //             }else if(wall.nextsector !== -1){
+            //                 //Overallping into another sector and we need to check walls there too.
+            //                 //It's not likely to have too many walls in a particular sector, so it's not a big deal
+            //                 pendingSectorStack.push(wall.nextsector);
+            //             }
+            //         }
+            //     }
     
-                if(nCollisions > 0){
-                    collisionDisplacementX /= nCollisions;
-                    collisionDisplacementY /= nCollisions;
+            //     if(nCollisions > 0){
+            //         collisionDisplacementX /= nCollisions;
+            //         collisionDisplacementY /= nCollisions;
     
-                    nextX = collisionDisplacementX;
-                    nextZ = collisionDisplacementY;
-                }
+            //         nextX = collisionDisplacementX;
+            //         nextZ = collisionDisplacementY;
+            //     }
                 
-                visitedSectorSet.add(sectorPtr);
-                sectorPtr = pendingSectorStack.pop();
-            }while(sectorPtr >= 0);
+            //     visitedSectorSet.add(sectorPtr);
+            //     sectorPtr = pendingSectorStack.pop();
+            // }while(sectorPtr >= 0);
         }
         
         this.pos[0] = nextX;

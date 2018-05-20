@@ -157,17 +157,17 @@ export class Scene{
         //Figure out where the user's looking and adjust the projectile accordingly
         const playerForward = this.player.forward;
 
-        const collisionData = this.map.rayTrace(this.player.pos[0], this.player.pos[1], this.player.pos[2], playerForward[0], playerForward[1], playerForward[2], this.player.sectorPtr);
-        const targetPosition = collisionData.point;
-        if(!collisionData.hasCollision){
-            //How can this happen? We must be floating around aimlessly in space
-            targetPosition[0] = 0;
-            targetPosition[1] = 0;
-            targetPosition[2] = -10;
+        // const collisionData = this.map.rayTrace(this.player.pos[0], this.player.pos[1], this.player.pos[2], playerForward[0], playerForward[1], playerForward[2], this.player.sectorPtr);
+        // const targetPosition = collisionData.point;
+        // if(!collisionData.hasCollision){
+        //     //How can this happen? We must be floating around aimlessly in space
+        //     targetPosition[0] = 0;
+        //     targetPosition[1] = 0;
+        //     targetPosition[2] = -10;
 
-            vec3.transformQuat(targetPosition, targetPosition, this.player.rot);
-            vec3.add(targetPosition, targetPosition, this.player.pos);
-        }
+        //     vec3.transformQuat(targetPosition, targetPosition, this.player.rot);
+        //     vec3.add(targetPosition, targetPosition, this.player.pos);
+        // }
 
 
         //throw back the weapon

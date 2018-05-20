@@ -201,7 +201,7 @@ export class LevelMap{
         let continueScanning, furthestDistance = 0, nearestDistance = 1000000, hasTerminated = false, terminalCollision;
         let a,b,d;
         let planeNormal, planed, planepicnum;
-        
+
         pendingSectorStack.clear();
 
         do{
@@ -254,9 +254,6 @@ export class LevelMap{
                 aa_math.lineSegmentIntersection(collisionQuery, p0x, p0z, p1x, p1z, wall.x, wall.y, point2.x, point2.y);
                 if(collisionQuery.hasCollision){    
                     const x = collisionQuery.point[0], y = p0y + lb * collisionQuery.t, z = collisionQuery.point[2];
-                    a = x - p0x;
-                    b = z - p0z;
-                    d = a*a + b*b;
     
                     terminalCollision = wall.nextsector === -1;
                     if(!terminalCollision){
@@ -265,6 +262,10 @@ export class LevelMap{
                     }
                 
                     if(terminalCollision){
+                        a = x - p0x;
+                        b = z - p0z;
+                        d = a*a + b*b;
+
                         if(d < nearestDistance){
                             collisionData.point[0] = x;
                             collisionData.point[1] = y;
@@ -280,17 +281,12 @@ export class LevelMap{
                         }
                         hasTerminated = true;
                     }else if(!hasTerminated){
-                        if(d > furthestDistance){
-                            collisionData.sectorPtr = wall.nextsector;
-                            furthestDistance = d;
-                        }
-
-                        pendingSectorStack.push(wall.nextSector);
+                        pendingSectorStack.push(wall.nextsector);
                     }
     
                 }
             }
-        }while((sectorPtr = pendingSectorStack.pop()) !== -1);
+        }while(!hasTerminated && (sectorPtr = pendingSectorStack.pop()) !== -1);
 
 
         return collisionData;

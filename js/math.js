@@ -210,7 +210,6 @@ export function lineSegmentIntersectsPlane(out, rayOriginX, rayOriginY, rayOrigi
         t = PNdotRO / incidence;
 
     if(t < 0 || t >= 1){
-        //collision behind ray, ignore
         out.hasCollision = false;
         return;
     }
