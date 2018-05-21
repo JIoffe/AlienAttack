@@ -166,6 +166,7 @@ export function rayIntersectsPlane(out, rayOriginX, rayOriginY, rayOriginZ, rayD
         out.hasCollision = false;
         return;
     }
+    
     const PNdotRO = planeNormX * -rayOriginX + planeNormY * (planeD - rayOriginY) + planeNormZ * -rayOriginZ,
         t = PNdotRO / incidence;
 

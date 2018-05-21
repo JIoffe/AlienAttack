@@ -20,6 +20,12 @@ var indexCount = 0;
 const visitedSectorSet = new Set();
 const pendingSectorStack = new UIntStack(32);
 
+//Common intersection math ops
+const _rayIntersectsPlane = aa_math.rayIntersectsPlane;
+const _rayIntersectsLine = aa_math.rayLineSegmentIntersection;
+const _lineSegmentIntersectsPlane = aa_math.lineSegmentIntersectsPlane;
+const _lineSegmentIntersection = aa_math.lineSegmentIntersection;
+
 export class LevelMap{
     static get collisionDataBuffer(){
         return collisionDataBuffer;
@@ -198,7 +204,7 @@ export class LevelMap{
         const collisionData = collisionDataBuffer[0], collisionQuery = collisionDataBuffer[1];
         collisionData.hasCollision = false;
 
-        let continueScanning, furthestDistance = 0, nearestDistance = 1000000, hasTerminated = false, terminalCollision;
+        let continueScanning, nearestDistance = 1000000, hasTerminated = false, terminalCollision;
         let a,b,d;
         let planeNormal, planed, planepicnum;
 
@@ -220,7 +226,7 @@ export class LevelMap{
                 planepicnum = sector.ceilingpicnum;
             }
 
-            aa_math.lineSegmentIntersectsPlane(collisionQuery, p0x, p0y, p0z, la, lb, lc, planeNormal[0], planeNormal[1], planeNormal[2], planed);
+            _lineSegmentIntersectsPlane(collisionQuery, p0x, p0y, p0z, la, lb, lc, planeNormal[0], planeNormal[1], planeNormal[2], planed);
             if(collisionQuery.hasCollision){
                 a = collisionQuery.point[0] - p0x;
                 b = collisionQuery.point[2] - p0z;
@@ -251,7 +257,7 @@ export class LevelMap{
                 if(la * (wall.y - point2.y) + lc * (point2.x - wall.x) > 0)
                     continue;
     
-                aa_math.lineSegmentIntersection(collisionQuery, p0x, p0z, p1x, p1z, wall.x, wall.y, point2.x, point2.y);
+                _lineSegmentIntersection(collisionQuery, p0x, p0z, p1x, p1z, wall.x, wall.y, point2.x, point2.y);
                 if(collisionQuery.hasCollision){    
                     const x = collisionQuery.point[0], y = p0y + lb * collisionQuery.t, z = collisionQuery.point[2];
     
@@ -304,27 +310,28 @@ export class LevelMap{
      * @returns {CollisionData} Nearest collision against the origin of the ray (if any)
      */
     rayTrace(rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, sectorPtr){
+        //Essentially double buffering - when a potential collision check is the best candidate, copy it to our result set
         const collisionData = collisionDataBuffer[0], collisionQuery = collisionDataBuffer[1];
         collisionData.hasCollision = false;
 
-        let continueScanning;
-        sectorPtr = this.determineSector(sectorPtr, rayOriginX, rayOriginZ);
+        let continueScanning, nearestDistance = 1000000, hasTerminated = false, terminalCollision;
+        let a,b,d;
+        let planeNormal, planed, planepicnum;
 
-        //Here's the idea:
-        //On each pass of a sector's walls, we want to keep either:
-        //the nearest collision that terminates the ray 
-        //the furthest collision that leads to a new sector if no collisions terminate the ray
-        let furthestDistance = 0, nearestDistance = 10000, hasTerminated = false;
+        pendingSectorStack.clear();
+        visitedSectorSet.clear();
 
         do{
+            if(visitedSectorSet.has(sectorPtr))
+                continue;
+
+            visitedSectorSet.add(sectorPtr);
+
             const sector = this.sectors[sectorPtr],
                 end = sector.wallptr + sector.wallnum;
 
-            continueScanning = false;
-
-            let a,b,d;
-
-            let planeNormal, planed, planepicnum;
+            //If line segment moving down, check for collision against floor.
+            //Otherwise, check against ceiling
             if(rayDirectionY < 0){
                 planeNormal = sector.floorNormal;
                 planed = sector.floord;
@@ -335,13 +342,13 @@ export class LevelMap{
                 planepicnum = sector.ceilingpicnum;
             }
 
-            aa_math.rayIntersectsPlane(collisionQuery, rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, planeNormal[0], planeNormal[1], planeNormal[2], planed);
-            if(collisionQuery.hasCollision && aa_math.insidePolygon(sector.getWallLoops(this.walls)[0], collisionQuery.point[0], collisionQuery.point[2])){
+            _rayIntersectsPlane(collisionQuery, rayOriginX, rayOriginY, rayOriginZ, rayDirectionX, rayDirectionY, rayDirectionZ, planeNormal[0], planeNormal[1], planeNormal[2], planed);
+            if(collisionQuery.hasCollision){
                 a = collisionQuery.point[0] - rayOriginX;
                 b = collisionQuery.point[2] - rayOriginZ;
                 d = a*a + b*b;
 
-                if(d < nearestDistance){
+                if(d < nearestDistance && this.isInSector(sectorPtr, collisionQuery.point[0], collisionQuery.point[2])){
                     collisionData.point[0] = collisionQuery.point[0];
                     collisionData.point[1] = collisionQuery.point[1];
                     collisionData.point[2] = collisionQuery.point[2];
@@ -350,10 +357,9 @@ export class LevelMap{
                     collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
                     collisionData.hasCollision = true;
 
-                    collisionData.sectorPtr = sectorPtr;
                     collisionData.picnum = planepicnum;
 
-                    nearestDistance = d;                    
+                    nearestDistance = d;      
                 }
             }
 
@@ -361,21 +367,25 @@ export class LevelMap{
                 const wall = this.walls[i],
                     point2 = this.walls[wall.point2];
     
-                aa_math.rayLineSegmentIntersection(collisionQuery, rayOriginX, rayOriginZ, rayDirectionX, rayDirectionZ, wall.x, wall.y, point2.x, point2.y);
-                if(collisionQuery.hasCollision){
-                    a = collisionQuery.point[0] - rayOriginX;
-                    b = collisionQuery.point[2] - rayOriginZ;
-                    d = a*a + b*b;
-
+                //Ignore backfacing
+                if(rayDirectionX * (wall.y - point2.y) + rayDirectionZ * (point2.x - wall.x) > 0)
+                    continue;
+    
+                _rayIntersectsLine(collisionQuery, rayOriginX, rayOriginZ, rayDirectionX, rayDirectionZ, wall.x, wall.y, point2.x, point2.y);
+                if(collisionQuery.hasCollision){    
                     const x = collisionQuery.point[0], y = rayOriginY + rayDirectionY * collisionQuery.t, z = collisionQuery.point[2];
 
-                    let terminalCollision = wall.nextsector === -1;
+                    terminalCollision = wall.nextsector === -1;
                     if(!terminalCollision){
                         const nextSector = this.sectors[wall.nextsector];
                         terminalCollision = nextSector.getFloorHeight(x, z) > y || nextSector.getCeilingHeight(x, z) < y;
                     }
-
+                
                     if(terminalCollision){
+                        a = collisionQuery.point[0] - rayOriginX;
+                        b = collisionQuery.point[2] - rayOriginZ;
+                        d = a*a + b*b;
+
                         if(d < nearestDistance){
                             collisionData.point[0] = x;
                             collisionData.point[1] = y;
@@ -384,24 +394,19 @@ export class LevelMap{
                             collisionData.surfaceNormal[1] = collisionQuery.surfaceNormal[1];
                             collisionData.surfaceNormal[2] = collisionQuery.surfaceNormal[2];
                             collisionData.hasCollision = true;
-
-                            collisionData.wallptr = i;
-                            collisionData.sectorPtr = wall.nextsector;
                             collisionData.picnum = wall.picnum;
-
+    
+                            collisionData.wallptr = i;
                             nearestDistance = d;
                         }
-                        hasTerminated = true;
-                    }else if(!hasTerminated){
-                        if(d > furthestDistance){
-                            sectorPtr = wall.nextsector;
-                            furthestDistance = d;
-                            continueScanning = true;
-                        }
+                    }else{
+                        pendingSectorStack.push(wall.nextsector);
                     }
+    
                 }
             }
-        }while(!hasTerminated && continueScanning);
+        }while((sectorPtr = pendingSectorStack.pop()) !== -1);
+
 
         return collisionData;
     }
