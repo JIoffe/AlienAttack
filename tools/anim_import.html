@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="app">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Mesh Import Utility</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+
+    <style>
+        html,body {
+            height: 100%;
+        }
+        main > .navbar{
+            box-shadow: 0 0 4px rgba(0,0,0,0.3);
+        }
+        .dynamic-list{
+            display: flex;
+            align-items: center;
+        }
+
+        .rounded-right-only{
+            border-radius: 0 0.25rem 0.25rem 0!important;
+        }
+
+        .img-preview > img{
+            width: 100%;
+        }
+        #cbuffer{
+            display: none;
+        }
+
+        .flex-container{
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+
+        .flex-0{
+            flex: 0;
+        }
+
+        .flex-1{
+            flex: 1;
+        }
+    </style>
+
+    <script type="text/javascript" src="../dist/import-tool.bundle.min.js"></script>
+</head>
+<body>
+    <main class="container-fluid px-0 flex-container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light flex-0">
+            <span class="navbar-brand">Mesh Import Utility</span>
+            <div class="form-inline my-2 my-lg-0">
+                <button type="button" class="btn btn-secondary mx-1">New</button>
+                <button type="button" class="btn btn-info mx-1">Open</button>
+            </div>
+            <div class="form-inline my-2 my-lg-0 ml-2">
+                <input class="form-control mr-sm-2" value="untitled" id="input-filename">
+                <button class="btn btn-primary my-2 my-sm-0" type="button">Save</button>
+            </div>
+        </nav>
+
+        <div class="row p-0 m-0 flex-1">
+            <div class="col p-4">
+                <mesh-properties></mesh-properties>
+            </div>
+            <div class="col p-0">
+                <preview-window class="flex-container"></preview-window>
+            </div>
+        </div>
+    </main>
+    <canvas id="cbuffer"></canvas>
+</body>
+</html>

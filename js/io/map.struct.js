@@ -9,9 +9,12 @@ import { wallTexDimensY } from "../art";
  * Encapsulates the rendering and collision detection within a Build engine map
  */
 
+ //iterator variables
+let i;
+
 const COLLISION_DATA_BUFFER_SIZE = 16;
 const collisionDataBuffer = new Array(COLLISION_DATA_BUFFER_SIZE);
-for(let i = 0; i < COLLISION_DATA_BUFFER_SIZE; ++i)
+for(i = 0; i < COLLISION_DATA_BUFFER_SIZE; ++i)
     collisionDataBuffer[i] = new CollisionData();
 
 const buffers = new Array(3);
@@ -77,7 +80,7 @@ export class LevelMap{
         //whichever ends up being cheaper.
         const sectors = this.sectors;
         const n = sectors.length;
-        for(let i = 0; i < n; ++i){
+        for(i = 0; i < n; ++i){
             const sector = sectors[i],
                 indices = sector.indices,
                 wallData = sector.wallData;
@@ -129,7 +132,7 @@ export class LevelMap{
 
         const neighbors = this.sectors[previousSector].getNeighboringSectors(this.walls),
             nNeighbors = neighbors.length;
-        for(let i = 0; i < nNeighbors; ++i){
+        for(i = 0; i < nNeighbors; ++i){
             const j = neighbors[i];
             if(this.isInSector(j, x, y)){
                 return j;
@@ -148,7 +151,7 @@ export class LevelMap{
 
         let count = 0, y0, y1, x0, x1, t, u, sx, sy;
 
-        for(let i = sector.wallptr; i < end; ++i){
+        for(i = sector.wallptr; i < end; ++i){
             const wall = this.walls[i],
                 point2 = this.walls[wall.point2];
 
@@ -175,7 +178,7 @@ export class LevelMap{
         const sectors = this.sectors,
             walls = this.walls;
 
-        for(let i = 0; i < sectors.length; ++i){
+        for(i = 0; i < sectors.length; ++i){
             if(this.isInSector(i, x, y))
                 return i;
         }
@@ -249,7 +252,7 @@ export class LevelMap{
                 hasTerminated = true;
             }
 
-            for(let i = sector.wallptr; i < end; ++i){
+            for(i = sector.wallptr; i < end; ++i){
                 const wall = this.walls[i],
                     point2 = this.walls[wall.point2];
     
@@ -363,7 +366,7 @@ export class LevelMap{
                 }
             }
 
-            for(let i = sector.wallptr; i < end; ++i){
+            for(i = sector.wallptr; i < end; ++i){
                 const wall = this.walls[i],
                     point2 = this.walls[wall.point2];
     

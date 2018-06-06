@@ -1,0 +1,19 @@
+<form>
+    <div class="form-row">
+        <div class="input-group mb-3 col-6">
+            <div class="input-group-prepend">
+                <span class="input-group-text" id="basic-addon3">Image: </span>
+            </div>
+            <input type="text" readonly class="form-control" data-ng-model="$ctrl.fileName"/>
+            <label class="btn btn-primary rounded-right-only my-0">Open
+                <input type="file" class="d-none" data-load-file="$ctrl.onImageSelect"/>
+            </label>
+            
+        </div>
+    </div>
+    <div class="form-row" data-ng-if="!!$ctrl.src && !!$ctrl.src.length">
+        <div class="col-6 border rounded img-preview py-2 px-2">
+            <img data-ng-src="{{$ctrl.src}}"/>
+        </div>
+    </div>
+</form>

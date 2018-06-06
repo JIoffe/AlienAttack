@@ -84,6 +84,37 @@ const VertexShaders = {
             vTextureCoords = aTexCoords;
         }                
         `,
+    unlit:
+        `
+        attribute vec4 aVertexPosition;
+        attribute vec2 aTexCoords;
+
+        uniform mat4 uModelViewProj;
+        varying vec2 vTextureCoords;
+
+        void main(void){
+            gl_Position = uModelViewProj * aVertexPosition;
+            vTextureCoords = aTexCoords;
+        }
+
+        `,
+    skinnedUnlit:
+        `
+        attribute vec4 aVertexPosition;
+        attribute vec2 aTexCoords;
+        attribute vec4 aVertexPositionB;
+
+        uniform mat4 uModelViewProj;
+        uniform float s;
+
+        varying vec2 vTextureCoords;
+
+        void main(void){
+            gl_Position = uModelViewProj * mix(aVertexPosition, aVertexPositionB, s);
+            vTextureCoords = aTexCoords;
+        }
+
+        `,
     walls:
         `        
         attribute vec4 aVertexPosition;
@@ -183,7 +214,6 @@ const FragmentShaders = {
                 s = 0.0;
 
             gl_FragColor = mix(diffuse, reflection, s);
-
             gl_FragColor.a = 1.0;
         }  
         `,
@@ -217,6 +247,7 @@ class ShaderProgram{
         this.program = program;
         this.attribLocations = {
             vertexPosition: gl.getAttribLocation(program, 'aVertexPosition'),
+            vertexPositionB: gl.getAttribLocation(program, 'aVertexPositionB'),
             texPosition: gl.getAttribLocation(program, 'aTexCoords'),
             normalPosition: gl.getAttribLocation(program, 'aNormal'),
             shade: gl.getAttribLocation(program, 'aShade')
@@ -230,7 +261,8 @@ class ShaderProgram{
             sampler: gl.getUniformLocation(program, 'uSampler'),
             samplerCube: gl.getUniformLocation(program, 'uSamplerCube'),
             cameraPos: gl.getUniformLocation(program, 'uCameraPos'),
-            color: gl.getUniformLocation(program, 'uColor')
+            color: gl.getUniformLocation(program, 'uColor'),
+            s: gl.getUniformLocation(program, 's')
         };
     }
 

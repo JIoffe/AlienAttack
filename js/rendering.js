@@ -7,6 +7,7 @@ import { TextureUtils } from './utils/texture.utils';
 import { Laser } from './geometry/fx/laser';
 import { ObjReader } from './io/obj-reader';
 import { ParticleSystem } from './physics/particle-system';
+import { MeshReader } from './io/mesh-reader';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -21,6 +22,11 @@ const VEC3_UP = new Float32Array([0, 1, 0]);
 const clipLeft = -1.0;
 const clipRight = 1.0;
 const cullp0 = vec4.create();
+
+
+//Iterator variables
+var projectile;
+let i;
 
 export class Renderer{
     constructor(canvas){
@@ -49,6 +55,11 @@ export class Renderer{
         //Always enable essential attributes for position and texCoords
         this.gl.enableVertexAttribArray(0);
         this.gl.enableVertexAttribArray(1);
+
+        this.meshReader = new MeshReader();
+
+        //Create buffers for geometry
+        //this.gl
     }
 
     initialize(){
@@ -101,15 +112,25 @@ export class Renderer{
 
     initializeModels(){
         return new Promise((resolve, reject) => {
-            const objReader = new ObjReader();
-            
-            const promises = art.mesh_list.map(path => objReader.readUrl(this.gl, path));
+            const promises = [this.initializeMeshList('pov_weapon_mesh_list')];
+            Promise.all(promises)
+                .then(() => {
+                    delete this.meshReader;
+                    resolve();
+                });
+        });
+    }
+
+    initializeMeshList(listName){
+        const gl = this.gl;
+        return new Promise((resolve, reject) => {
+            const promises = art[listName].map(meshDef => this.meshReader.read(gl, meshDef));
 
             Promise.all(promises).then(meshes => {
-                this.meshes = meshes;
+                this[listName] = meshes;
                 resolve();
             });
-        });
+        });        
     }
 
     get isReady(){
@@ -146,10 +167,10 @@ export class Renderer{
 
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderable.buffers.indices);
             
-            for(let i = 0; i < scene.nProjectiles; ++i){
-                let p = scene.projectiles[i];
+            for(i = 0; i < scene.nProjectiles; ++i){
+                projectile = scene.projectiles[i];
 
-                mat4.fromRotationTranslation(this.dynamicModelViewMatrix, p.rot, p.pos);
+                mat4.fromRotationTranslation(this.dynamicModelViewMatrix, projectile.rot, projectile.pos);
                 mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
                 gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, this.dynamicModelViewMatrix);
 
@@ -157,8 +178,10 @@ export class Renderer{
             }
         }
         
+        //Particles do not write to the depth buffer
         gl.depthMask(false);
         scene.decalSystem.draw(gl, this.modelViewMatrix, this.shaderPrograms[6], this.particleTextures[0]);
+
         //Shinies and other effects
         gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
         scene.particleSystem.draw(gl, this.shaderPrograms[3], this.particleTextures[0], this.modelViewMatrix);
@@ -178,7 +201,7 @@ export class Renderer{
             mat4.fromQuat(this.invTranspose, aa_math.QUAT_TEMP);
             mat3.fromMat4(this.normalMatrix, this.invTranspose);
 
-            this.meshes[0].draw(gl, p, this.meshTextures[0], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
+            this.pov_weapon_mesh_list[0].draw(gl, p, this.meshTextures[0], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
         }
         //Draw GUI - weapon, health, etc.
         // gl.disable(gl.DEPTH_TEST);
@@ -197,7 +220,8 @@ export class Renderer{
             new ShaderProgram(gl, VertexShaders.particle, FragmentShaders.particle),
             new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor),
             new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective),
-            new ShaderProgram(gl, VertexShaders.decal, FragmentShaders.decal)
+            new ShaderProgram(gl, VertexShaders.decal, FragmentShaders.decal),
+            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.gui)
         ];
     }
 

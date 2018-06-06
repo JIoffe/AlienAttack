@@ -4,7 +4,62 @@ import { RegexUtils } from "../utils/regex.utils";
 const OBJ_IMPORT_SCALE = 0.5;
 
 export class ObjReader{
-    readUrl(gl, url){
+    parse(fileContent, scale){
+
+        if(typeof scale !== 'number'){
+            scale = 1;
+        }
+
+        const meshObjects = [];
+        let activeObject;
+
+        fileContent.split(/\r?\n/)
+            .forEach(line => {
+                const token = line.split(/\s/)[0];
+                switch(token){
+                    //OBJECT
+                    case 'o':
+                        const name = getObjectName(line);
+                        activeObject = new MeshObject(name);
+                        meshObjects.push(activeObject);
+                        break;
+                    case 'v':{
+                        const verts = RegexUtils.getFloats(line);
+                        for(let i = 0; i < verts.length; ++i){
+                            verts[i] *= scale;
+                        }
+
+                        activeObject.addVertices(verts);
+                        break;
+                    }
+                    case 'vt':
+                        activeObject.addTexCoords(RegexUtils.getFloats(line));
+                        break;    
+                    case 'vn':
+                        activeObject.addNormals(RegexUtils.getFloats(line));
+                        break;
+                    case 'f':
+                        const faceGroups = getFaceGroups(line);
+                        activeObject.addFaceGroups(faceGroups);
+                        break;                      
+                    default:
+                        break;
+                }
+            });
+
+        const outputMesh = meshObjects[0];
+        if(!outputMesh){
+            console.error('No object node(s) found');
+            return;
+        }
+
+        return outputMesh.compile();
+    }
+
+    read(gl, meshDef){
+        const url = meshDef.path;
+        const scale = meshDef.importScale;
+
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
 
@@ -35,9 +90,15 @@ export class ObjReader{
                             activeObject = new MeshObject(name);
                             meshObjects.push(activeObject);
                             break;
-                        case 'v':
-                            activeObject.addVertices(RegexUtils.getFloats(line));
+                        case 'v':{
+                            const verts = RegexUtils.getFloats(line);
+                            for(let i = 0; i < verts.length; ++i){
+                                verts[i] *= scale;
+                            }
+
+                            activeObject.addVertices(verts);
                             break;
+                        }
                         case 'vt':
                             activeObject.addTexCoords(RegexUtils.getFloats(line));
                             break;    
@@ -53,7 +114,6 @@ export class ObjReader{
                     }
                 });
 
-                console.log(meshObjects[0]);
                 const mesh = meshObjects[0].compileMesh(gl);
                 resolve(mesh);
             };

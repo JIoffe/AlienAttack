@@ -1,0 +1,11 @@
+<form>
+    <div class="input-group mb-3">
+        <div class="input-group-prepend">
+            <span class="input-group-text" id="basic-addon3">Model Source: </span>
+        </div>
+        <input type="text" readonly class="form-control" data-ng-model="$ctrl.fileName"/>
+        <label class="btn btn-primary rounded-right-only my-0">Open
+            <input type="file" class="d-none" data-load-file="$ctrl.onModelSelect"/>
+        </label>
+    </div>
+</form>

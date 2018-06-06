@@ -49,15 +49,27 @@ export class TextureUtils{
         });
     }
 
-    static initTexture2D(gl, texPath, useBilinearFiltering, generateMipMaps){
-        return new Promise((resolve, reject) => {
-            const tex = gl.createTexture(),
-                  image = new Image();
-                  
-            image.onload = () => {
-                gl.bindTexture(gl.TEXTURE_2D, tex);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.getMirroredImageData(image));
+    static initTexture2D(gl, src, useBilinearFiltering, generateMipMaps){
+        //data URLs don't have to be flipped - they are already in the format WebGL likes
+        var isDataUrl = src.indexOf('data:image') === 0;
 
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.src = src;
+
+            this.initTexture2DFromImage(gl, image, useBilinearFiltering, generateMipMaps, !isDataUrl)
+                .then(tex => resolve(tex));
+        });
+    }
+
+    static initTexture2DFromImage(gl, image, useBilinearFiltering, generateMipMaps, flipY = true){
+        return new Promise((resolve, reject) => {
+            const processTask = () => {
+                const tex = gl.createTexture();
+    
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, flipY ? this.getMirroredImageData(image) : image);
+    
                 let magFilter, minFilter;
                 if(!!useBilinearFiltering){
                     magFilter = gl.LINEAR;
@@ -66,21 +78,24 @@ export class TextureUtils{
                     magFilter = gl.NEAREST;
                     minFilter = gl.NEAREST;
                 }
-
+    
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, magFilter);					
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
-
+    
                 if(generateMipMaps)
                     gl.generateMipmap(gl.TEXTURE_2D);
                 
-                gl.bindTexture(gl.TEXTURE_2D, null);                 
+                gl.bindTexture(gl.TEXTURE_2D, null);           
                 resolve(tex);
             };
-
-            image.src = texPath;
+    
+            if(!!image.complete){
+                processTask();
+            }else{
+                image.onload = processTask;
+            }
         });
     }
-
     /**
      * Flips image data along the Y axis to fit WebGL better
      * @param {HTMLImageElement} image 

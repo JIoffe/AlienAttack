@@ -66,6 +66,8 @@ export class Scene{
 
         this.particleSystem = new ParticleSystem(MAX_PARTICLES);
         this.decalSystem = new DecalSystem(MAX_DECALS);
+
+        this.activeWeapon = 0;
     }
 
     setMap(map){

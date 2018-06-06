@@ -1,4 +1,5 @@
 import { Mesh } from "../geometry/mesh";
+import { MeshBuilder } from "../geometry/mesh-builder";
 
 export class MeshObject{
     constructor(name){
@@ -25,6 +26,38 @@ export class MeshObject{
         data.forEach(v => {
             this.faceGroups.push(v);
         });
+    }
+
+    compile(){
+        const meshBuilder = new MeshBuilder();
+
+        //Reassemble the faces from the obj to better fit WebGL
+        const indices = [],
+        vertices = [],
+        texCoords = [],
+        normals = [];
+
+        this.faceGroups.forEach(group => {
+            let i;
+            //V, VT, VN
+            i = (group.indices[0] - 1) * 3;
+            vertices.push(this.vertices[i], this.vertices[i+1], this.vertices[i+2]);
+
+            i = (group.indices[1] - 1) * 2;
+            texCoords.push(this.texCoords[i], this.texCoords[i+1]);
+
+            i = (group.indices[2] - 1) * 3;
+            normals.push(this.normals[i], this.normals[i+1], this.normals[i+2]);
+
+            indices.push(indices.length);
+        });
+
+        return meshBuilder.setAnimated(false)
+            .setVertices(vertices)
+            .setTexCoords(texCoords)
+            .setNormals(normals)
+            .setIndices(indices)
+            .build();
     }
 
     compileMesh(gl){

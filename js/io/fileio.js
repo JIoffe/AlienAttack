@@ -5,6 +5,9 @@ const SIZEOF_INT32 = 4;
 const SIZEOF_INT16 = 2;
 const SIZEOF_INT8 = 1;
 
+/**
+ * Wraps common operations to access a stream of binary data
+ */
 export class BinaryStream{
     constructor(arrayBuffer, littleEndian = false){
         this.dv = new DataView(arrayBuffer);

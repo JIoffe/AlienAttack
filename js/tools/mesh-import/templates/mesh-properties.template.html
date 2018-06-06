@@ -1,0 +1,11 @@
+<div class="btn-toolbar mb-3" role="toolbar" aria-label="Toolbar with button groups">
+    <h3 class="mr-2">Mesh Type:</3>
+    <div class="btn-group" role="group" aria-label="Model Type">
+        <button type="button" class="btn btn-secondary" data-ng-click="$ctrl.setAnimated(false)" data-ng-class="{active: !$ctrl.mesh.isAnimated}">Static</button>
+        <button type="button" class="btn btn-secondary" data-ng-click="$ctrl.setAnimated(true)" data-ng-class="{active: $ctrl.mesh.isAnimated}">Animated</button>
+    </div>
+</div>
+
+<static-mesh-properties data-ng-if="!$ctrl.mesh.isAnimated"></static-mesh-properties>
+<animated-mesh-properties data-ng-if="$ctrl.mesh.isAnimated"></animated-mesh-properties>
+<image-selector></image-selector>

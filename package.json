@@ -15,6 +15,7 @@
     "webpack": "^3.11.0"
   },
   "dependencies": {
+    "angular": "^1.7.0",
     "gl-matrix": "^2.4.0",
     "libtess": "^1.2.2",
     "npm": "^5.7.1"
