@@ -2,6 +2,7 @@ import * as libtess from 'libtess'
 import * as ArrayUtils from '../utils/array.utils'
 import * as aa_math from '../math';
 import * as art from '../art';
+import { Buffers } from './buffers';
 
 const SIZEOF_SHORT = 2;
 
@@ -49,16 +50,14 @@ export class MapTesselator{
             });
         });
 
-        buffers[0] = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[0]);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        const bufferDesc = [
+            {data: vertices, count: 4, type: gl.FLOAT},
+            {data: texCoords, count: 2, type: gl.FLOAT}
+        ];
 
+        buffers[0] = Buffers.buildInterLeavedVBO(gl, bufferDesc);
         buffers[1] = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[1]);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
-
-        buffers[2] = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[2]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[1]);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
         return indices.length;

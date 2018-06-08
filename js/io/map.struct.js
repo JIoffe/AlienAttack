@@ -17,7 +17,7 @@ const collisionDataBuffer = new Array(COLLISION_DATA_BUFFER_SIZE);
 for(i = 0; i < COLLISION_DATA_BUFFER_SIZE; ++i)
     collisionDataBuffer[i] = new CollisionData();
 
-const buffers = new Array(3);
+const buffers = new Array(2);
 var indexCount = 0;
 
 const visitedSectorSet = new Set();
@@ -67,12 +67,10 @@ export class LevelMap{
         gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, modelViewMatrix);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers[0]);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 4, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 4, gl.FLOAT, false, 24, 0);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 24, 16);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers[1]);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[2]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers[1]);
 
         //Loops through all the sectors,
         //this is a placeholder to allow for PVS ellimination
@@ -91,14 +89,12 @@ export class LevelMap{
             gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
             gl.drawElements(gl.TRIANGLES, indices[0], gl.UNSIGNED_SHORT, indices[1])
 
-            gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, textures[sector.ceilingpicnum]);
             gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
             gl.drawElements(gl.TRIANGLES, indices[2], gl.UNSIGNED_SHORT, indices[3])
 
             const wallDataSize = sector.wallData.length;
             for(let j = 0; j < wallDataSize; j += 3){
-                gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, textures[wallData[j]]);
                 gl.uniform1i(shaderProgram.uniformLocations.sampler, 0);
                 gl.drawElements(gl.TRIANGLES, wallData[j+1], gl.UNSIGNED_SHORT, wallData[j+2]);         

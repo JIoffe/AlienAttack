@@ -17,6 +17,8 @@ const VertexShaders = {
         varying highp vec3 vNorm;
         void main(void) {
             gl_Position = aVertexPosition;
+            gl_Position.xy -= 1.0;
+            
             vNorm = normalize(uNormalMatrix*aNormal);
         }        
         `,
@@ -28,7 +30,7 @@ const VertexShaders = {
         varying vec2 vTextureCoords;
         void main(void) {
             gl_Position = aVertexPosition;
-            vTextureCoords = aTexCoords;
+            vTextureCoords = aTexCoords / 65535.0;
         }        
         `,
     particle:
@@ -56,7 +58,7 @@ const VertexShaders = {
         void main(void) {
             gl_Position = uModelViewProj * aVertexPosition;
             depth = gl_Position.w;
-            vTextureCoords = aTexCoords;
+            vTextureCoords = aTexCoords  / 65535.0;
         }                
         `,
     texturedWithNormals:
@@ -94,15 +96,15 @@ const VertexShaders = {
 
         void main(void){
             gl_Position = uModelViewProj * aVertexPosition;
-            vTextureCoords = aTexCoords;
+            vTextureCoords = aTexCoords / 65535.0;
         }
 
         `,
     skinnedUnlit:
         `
         attribute vec4 aVertexPosition;
-        attribute vec2 aTexCoords;
         attribute vec4 aVertexPositionB;
+        attribute vec2 aTexCoords;
 
         uniform mat4 uModelViewProj;
         uniform float s;
