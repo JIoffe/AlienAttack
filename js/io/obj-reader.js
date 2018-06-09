@@ -81,7 +81,6 @@ export class ObjReader{
 
                 let activeObject;
 
-                //Note - Normals are not supported, for simplicity
                 lines.forEach(line => {
                     const token = line.split(/\s/)[0];
                     switch(token){
@@ -198,9 +197,6 @@ function compileMeshData(objData){
     let maxIndex = -1;
 
     indices.forEach(i => maxIndex = Math.max(maxIndex, i));
-    console.log(maxIndex, 'vs', vcount);
-        
-    console.log(objData.vertices.length, 'vs', vertices.length);
 
     return new MeshBuilder()
         .setVertices(vertices)
