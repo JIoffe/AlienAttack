@@ -6,10 +6,14 @@
         <!-- <button class="btn btn-light mx-1"><i class="fas fa-stop"></i></button> -->
         <!-- <button class="btn btn-light mx-1"><i class="fas fa-fast-forward"></i></button> -->
     </div>
+    <div class="navbar-nav mr-auto">
+        <button class="btn btn-light mx-1" data-ng-click="$ctrl.setMode(0)" data-ng-class="{active: $ctrl.mode == 0}"><i class="fas fa-arrows-alt"></i></button>
+        <button class="btn btn-light mx-1" data-ng-click="$ctrl.setMode(1)" data-ng-class="{active: $ctrl.mode == 1}"><i class="fas fa-redo"></i></button>
+    </div>    
     <div class="form-inline">
         <button class="btn btn-light mx-1" data-ng-click="$ctrl.zoom(-0.25)"><i class="fas fa-plus"></i></button>
         <button class="btn btn-light mx-1" data-ng-click="$ctrl.zoom(0.25)"><i class="fas fa-minus"></i></button>
     </div>
 </nav>
-<canvas id="c" class="flex-1">Rendering not supported!</canvas>
+<canvas id="c" class="flex-1 grab">Rendering not supported!</canvas>
 <!-- <nav class="frame-track navbar navbar-expand lg navbar-light bg-light"></nav> -->

@@ -15,9 +15,13 @@ class ImageSelectorComponent{
     $onInit(){
     }
 
-    onImageSelect(fileContent, fileName){
-        this.fileName = fileName;
-        this.scene.imgSrc = this.src = fileContent;
+    onImageSelect(files){
+        if(!files || !files.length){
+            return;
+        }
+
+        this.fileName = files[0].fileName;
+        this.scene.imgSrc = this.src = files[0].content;
 
         this.$scope.$apply();
     }

@@ -18,15 +18,13 @@ export class ImportToolRenderer extends RendererBase{
 
         this.setClearColor(0.65,0.65,0.8);
         this.initializeShaders();
-
-        this.rot = quat.create();
-        quat.identity(this.rot);
-
         this.tex = null;
 
         //Our view never changes
         this.projectionMatrix = super.buildProjectionMatrix(this.gl, fov, near, far);
-        aa_math.buildCameraEyeMatrix(this.modelViewMatrix, [0,0,0], this.rot);
+
+        const q = quat.create();
+        aa_math.buildCameraEyeMatrix(this.modelViewMatrix, [0,0,0], q);
         mat4.multiply(this.modelViewMatrix, this.projectionMatrix, this.modelViewMatrix);
     }
 
@@ -34,9 +32,7 @@ export class ImportToolRenderer extends RendererBase{
         const gl = this.gl;
         gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
 
-        quat.fromEuler(this.rot, scene.pitch, scene.yaw, 0);
-
-        mat4.fromRotationTranslation(this.dynamicModelViewMatrix, this.rot, [0,0,scene.zoom]);
+        mat4.fromRotationTranslation(this.dynamicModelViewMatrix, scene.rot, scene.translation);
         mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
 
         if(!!this.meshBatch){

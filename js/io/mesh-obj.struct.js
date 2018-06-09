@@ -52,6 +52,8 @@ export class MeshObject{
             indices.push(indices.length);
         });
 
+        console.log(this.vertices.length, 'vs', vertices.length);
+
         return meshBuilder.setAnimated(false)
             .setVertices(vertices)
             .setTexCoords(texCoords)

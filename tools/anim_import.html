@@ -45,6 +45,35 @@
         .flex-1{
             flex: 1;
         }
+
+        .draggable{
+            cursor: ha
+        }
+
+        .grab {
+            cursor: -webkit-grab;
+            cursor: grab;
+        }
+        .grab:active {
+            cursor: -webkit-grabbing;
+            cursor: grabbing;
+        }
+
+        .scroll-window{
+            overflow-y: scroll;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        mesh-properties{
+            position: relative;
+            display: block;
+            height: 100%;
+        }
+
     </style>
 
     <script type="text/javascript" src="../dist/import-tool.bundle.min.js"></script>
@@ -64,7 +93,7 @@
         </nav>
 
         <div class="row p-0 m-0 flex-1">
-            <div class="col p-4">
+            <div class="col p-0">
                 <mesh-properties></mesh-properties>
             </div>
             <div class="col p-0">

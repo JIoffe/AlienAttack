@@ -17,8 +17,15 @@ class StaticMeshPropertiesController{
         this.fileName = '';
     }
 
-    onModelSelect(fileContent, fileName){
-        const type = getFileExtension(fileName);
+    onModelSelect(files){
+        if(!files || !files.length){
+            return;
+        }
+
+        const fileName = files[0].fileName,
+            fileContent = files[0].content,
+            type = getFileExtension(fileName);
+            
         this.fileName = fileName;
 
         this.scene.mesh = this.meshReaderService.parse(type, fileContent);

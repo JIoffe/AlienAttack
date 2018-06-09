@@ -7,6 +7,14 @@ export class MeshBuilder{
         this.animations = [];
     }
 
+    static buildFramesFromMeshes(meshes){
+        const nFrames = meshes.length;
+        let frames = [];
+        meshes.forEach(mesh => frames = frames.concat(mesh.vertices));
+
+        return frames;
+    }
+
     setVertices(vertices){
         this.vertices = vertices;
         return this;
@@ -50,16 +58,9 @@ export class MeshBuilder{
         return this;
     }
 
-    addFrame(frameData){
-        this.frames = this.frames.concat(frameData);
-        this.nFrames++;
-        return this;
-    }
-
-
     build(){
         return {
-            vcount: (this.vertices || []).length,
+            vcount: (this.vertices || []).length / 3,
             icount: (this.indices || []).length,
             isAnimated: !!this.isAnimated,
             vertices: this.vertices,

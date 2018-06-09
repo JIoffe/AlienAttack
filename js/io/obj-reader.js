@@ -1,5 +1,6 @@
 import { MeshObject } from "./mesh-obj.struct";
 import { RegexUtils } from "../utils/regex.utils";
+import { MeshBuilder } from "../geometry/mesh-builder";
 
 const OBJ_IMPORT_SCALE = 0.5;
 
@@ -19,28 +20,28 @@ export class ObjReader{
                 switch(token){
                     //OBJECT
                     case 'o':
-                        const name = getObjectName(line);
-                        activeObject = new MeshObject(name);
+                        activeObject = {
+                            name: getObjectName(line),
+                            vertices: [],
+                            texCoords: [],
+                            normals: [],
+                            indices: []
+                        };
                         meshObjects.push(activeObject);
                         break;
-                    case 'v':{
-                        const verts = RegexUtils.getFloats(line);
-                        for(let i = 0; i < verts.length; ++i){
-                            verts[i] *= scale;
-                        }
-
-                        activeObject.addVertices(verts);
+                    case 'v':
+                        RegexUtils.getFloats(line).forEach(v => activeObject.vertices.push(v * scale));              
                         break;
-                    }
-                    case 'vt':
-                        activeObject.addTexCoords(RegexUtils.getFloats(line));
-                        break;    
+                    case 'vt':{
+                        const uv = RegexUtils.getFloats(line);
+                        activeObject.texCoords.push(uv[0], 1.0 - uv[1]);
+                        break; 
+                    }   
                     case 'vn':
-                        activeObject.addNormals(RegexUtils.getFloats(line));
+                        RegexUtils.getFloats(line).forEach(n => activeObject.normals.push(n));
                         break;
                     case 'f':
-                        const faceGroups = getFaceGroups(line);
-                        activeObject.addFaceGroups(faceGroups);
+                        RegexUtils.getInts(line).forEach(i => activeObject.indices.push(i - 1));
                         break;                      
                     default:
                         break;
@@ -53,7 +54,7 @@ export class ObjReader{
             return;
         }
 
-        return outputMesh.compile();
+        return compileMeshData(outputMesh);
     }
 
     read(gl, meshDef){
@@ -142,4 +143,69 @@ function getFaceGroups(line){
     const regex = /(\d+\/\d+\/\d+)/g;
     const matches = RegexUtils.getAllMatches(regex, line);
     return matches.map(m => new FaceGroup(m));
+}
+
+function compileMeshData(objData){
+    const vertices = objData.vertices.slice(0);
+    let vcount = vertices.length / 3;
+    const texCoords = new Array(vcount * 2),
+        normals = new Array(vcount * 3),
+        indices = [];
+
+    const indexMatcher = [];
+    
+    for(let i = 0; i < objData.indices.length; i += 3){
+        const vIndex = objData.indices[i],
+            uvIndex = objData.indices[i + 1],
+            normIndex = objData.indices[i + 2];
+
+        
+        //Determine if this is a UV seam or not. In that 
+        //case we need to double up to avoid distortion
+        if(!indexMatcher[vIndex]){
+            indexMatcher[vIndex] = [
+                {uv: uvIndex, n: normIndex, actualIndex: vIndex}
+            ];
+
+            texCoords[vIndex * 2] = objData.texCoords[uvIndex * 2];
+            texCoords[vIndex * 2 + 1] = objData.texCoords[uvIndex * 2 + 1];
+    
+            normals[vIndex * 3] = objData.normals[normIndex * 3];
+            normals[vIndex * 3 + 1] = objData.normals[normIndex * 3 + 1];
+            normals[vIndex * 3 + 2] = objData.normals[normIndex * 3 + 2];
+    
+            indices.push(vIndex);
+        }else{
+            const match = indexMatcher[vIndex],
+                bestMatch = match.find(m => m.uv === uvIndex && m.n === normIndex);
+
+            if(!!bestMatch){
+                indices.push(bestMatch.actualIndex);
+            }else{
+                //No match exists - need to double up
+                vertices.push(vertices[vIndex * 3], vertices[vIndex * 3 + 1], vertices[vIndex * 3 + 2]);
+                texCoords.push(objData.texCoords[uvIndex * 2], objData.texCoords[uvIndex * 2 + 1]);
+                normals.push(objData.normals[normIndex * 3], objData.normals[normIndex * 3 + 1], objData.normals[normIndex * 3 + 2]);
+                const actualIndex = vcount++;
+
+                match.push({uv: uvIndex, n: normIndex, actualIndex: actualIndex});
+                indices.push(actualIndex);
+            }
+        }
+    }
+
+
+    let maxIndex = -1;
+
+    indices.forEach(i => maxIndex = Math.max(maxIndex, i));
+    console.log(maxIndex, 'vs', vcount);
+        
+    console.log(objData.vertices.length, 'vs', vertices.length);
+
+    return new MeshBuilder()
+        .setVertices(vertices)
+        .setTexCoords(texCoords)
+        .setNormals(normals)
+        .setIndices(indices)
+        .build();
 }

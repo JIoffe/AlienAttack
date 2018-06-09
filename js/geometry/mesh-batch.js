@@ -43,9 +43,13 @@ export class MeshBatch{
             // }
         });
 
+        const bufferDesc = [
+            {data: vertices, count: 3, type: gl.FLOAT},
+            {data: texCoords, count: 2, type: gl.UNSIGNED_SHORT, convertFloatToUInt: true}
+        ];
+
         this.buffers = [
-            Buffers.buildDataBuffer(gl, vertices),
-            Buffers.buildDataBuffer(gl, texCoords),
+            Buffers.buildInterLeavedVBO(gl, bufferDesc),
             Buffers.buildIndexBuffer(gl, indices)
         ];
 
@@ -59,12 +63,10 @@ export class MeshBatch{
      */
     bind(gl, shaderProgram){
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[0]);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 16, 0);
+        gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.UNSIGNED_SHORT, false, 16, 12);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers[1]);
-        gl.vertexAttribPointer(shaderProgram.attribLocations.texPosition, 2, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers[2]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers[1]);
     }
 
     /**

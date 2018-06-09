@@ -17,32 +17,43 @@ class LoadFileDirective{
         const caller = this.getCaller($scope, attributes.loadFile);
 
         element.bind('change', ev => {
-            const reader = new FileReader();
-            const file = (ev.srcElement || ev.target).files[0];
+            const loadFilePromises = Array.from((ev.srcElement || ev.target).files)
+                .map(file => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
 
-            reader.onload = loadEvent => {
-                const content = loadEvent.target.result;
+                        reader.onload = loadEvent => {
+                            const result = {
+                                content: loadEvent.target.result,
+                                fileName: file.name
+                            };
+                            resolve(result);
+                        }
 
-                if(!!caller){
-                    f.call(caller, content, file.name);
-                }else{
-                    f(content, file.name);
-                }
-            }
+                        const type = getFileExtension(file.name);
 
-            var type = getFileExtension(file.name);
+                        switch(type.toLowerCase()){
+                            case 'bmp':
+                            case 'jpg':
+                            case 'png':
+                            case 'jpeg':
+                                reader.readAsDataURL(file);
+                                break;
+                            default:
+                                reader.readAsText(file);
+                                break;
+                        }
+                    });
+                })
 
-            switch(type.toLowerCase()){
-                case 'bmp':
-                case 'jpg':
-                case 'png':
-                case 'jpeg':
-                    reader.readAsDataURL(file);
-                    break;
-                default:
-                    reader.readAsText(file);
-                    break;
-            }
+            Promise.all(loadFilePromises)
+                .then(loadedFiles => {
+                    if(!!caller){
+                        f.call(caller, loadedFiles);
+                    }else{
+                        f(loadedFiles);
+                    }
+                });
         });
 
         //Cleanup lingering event listeners

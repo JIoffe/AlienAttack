@@ -18,7 +18,7 @@ const VertexShaders = {
         void main(void) {
             gl_Position = aVertexPosition;
             gl_Position.xy -= 1.0;
-            
+
             vNorm = normalize(uNormalMatrix*aNormal);
         }        
         `,
