@@ -102,6 +102,10 @@ class PreviewWindowController{
         this.mode = m;
     }
 
+    setPlaybackMode(m){
+        this.scene.playbackMode = m;
+    }
+
     mainLoop(){
         requestAnimationFrame(() => this.mainLoop());
 

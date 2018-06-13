@@ -332,3 +332,12 @@ function circlePointRSquaredIntersection(out, cx, cy, rsquared, px, py){
 
     return false;
 } 
+
+export function getRandomDirection(){
+    VEC3_TEMP[0] = Math.random() * 2 - 1;
+    VEC3_TEMP[1] = Math.random() * 2 - 1;
+    VEC3_TEMP[2] = Math.random() * 2 - 1;
+
+    vec3.normalize(VEC3_TEMP, VEC3_TEMP);
+    return VEC3_TEMP;
+}

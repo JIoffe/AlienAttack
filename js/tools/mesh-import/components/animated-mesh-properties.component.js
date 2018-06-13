@@ -41,6 +41,7 @@ class AnimatedMeshPropertiesController{
 
   applyAnimation(){
     this.scene.mesh = this.mesh;
+    this.scene.selectedAnimation = this.scene.mesh.animations[0];
     this.scene.timestamp = new Date().getTime();
   }
 

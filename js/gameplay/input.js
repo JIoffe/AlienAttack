@@ -11,6 +11,8 @@ const FIRE = 256
 const SEMI_AUTO_FIRE_READY = 512
 const SEMI_AUTO_FIRE = FIRE | SEMI_AUTO_FIRE_READY;
 
+const ACTION = 1024;
+
 export class InputListener{
     constructor(document){
         this.inputStateFlags = SEMI_AUTO_FIRE_READY;
@@ -64,6 +66,9 @@ export class InputListener{
                 case 68:
                     this.inputStateFlags |= STRAFE_RIGHT
                     break
+                case 76:
+                    this.inputStateFlags |= ACTION
+                    break;
                 case 32:
                     this.inputStateFlags |= JUMP
                     break
@@ -100,6 +105,9 @@ export class InputListener{
                 case 68:
                     this.inputStateFlags &= ~STRAFE_RIGHT
                     break
+                case 76:
+                    this.inputStateFlags &= ~ACTION
+                    break;
                 case 32:
                     this.inputStateFlags &= ~JUMP
                     break
@@ -180,7 +188,11 @@ export class InputListener{
 
     get fire(){
         return !!(this.inputStateFlags & FIRE)
-    } 
+    }
+
+    get action(){
+        return !!(this.inputStateFlags & ACTION)
+    }
 
     _onMouseLook(ev){
         if(!this.mouselook)

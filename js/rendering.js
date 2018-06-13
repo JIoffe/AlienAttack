@@ -8,6 +8,7 @@ import { Laser } from './geometry/fx/laser';
 import { ObjReader } from './io/obj-reader';
 import { ParticleSystem } from './physics/particle-system';
 import { MeshReader } from './io/mesh-reader';
+import { addAnimatedGeometry } from './geometry/animated-mesh-repository';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -25,7 +26,7 @@ const cullp0 = vec4.create();
 
 
 //Iterator variables
-var projectile;
+var projectile, program, enemy;
 let i;
 
 export class Renderer{
@@ -58,6 +59,7 @@ export class Renderer{
 
         this.meshReader = new MeshReader();
 
+        this.meshBatches = [];
         //Create buffers for geometry
         //this.gl
     }
@@ -112,7 +114,11 @@ export class Renderer{
 
     initializeModels(){
         return new Promise((resolve, reject) => {
-            const promises = [this.initializeMeshList('pov_weapon_mesh_list')];
+            const promises = [
+                this.initializeMeshList('pov_weapon_mesh_list'),
+                this.meshReader.download(art.scene_mesh_list[0])
+                    .then(m => this.buildMeshBuffers(m))
+            ];
             Promise.all(promises)
                 .then(() => {
                     delete this.meshReader;
@@ -131,6 +137,12 @@ export class Renderer{
                 resolve();
             });
         });        
+    }
+
+    buildMeshBuffers(mesh){
+        if(!!mesh.isAnimated){
+            addAnimatedGeometry(this.gl, mesh);
+        }
     }
 
     get isReady(){
@@ -155,15 +167,32 @@ export class Renderer{
         this.skybox.draw(gl, this.shaderPrograms[0], this.skyboxTex, this.modelViewMatrix, this.normalMatrix);
         scene.map.draw(gl, this.modelViewMatrix, this.shaderPrograms[1], this.wallTextures);
 
+        if(scene.enemies.length > 0){
+            program = this.shaderPrograms[7];
+            gl.useProgram(program.program);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.meshTextures[1]);
+            gl.uniform1i(program.uniformLocations.sampler, 0);
+
+            for(i = 0; i < scene.enemies.length; ++i){
+                enemy = scene.enemies[i];
+                mat4.fromRotationTranslation(this.dynamicModelViewMatrix, enemy.rot, enemy.pos);
+                mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
+                enemy.advanceFrame(time);
+                enemy.draw(gl, program, this.dynamicModelViewMatrix);
+            }
+        }
+
         if(scene.nProjectiles > 0){
-            const shaderProgram = this.shaderPrograms[4];
-            gl.useProgram(shaderProgram.program);
+            program = this.shaderPrograms[4];
+            gl.useProgram(program.program);
 
             const renderable = this.projectileGeometries[scene.projectiles[0].type];
             gl.bindBuffer(gl.ARRAY_BUFFER, renderable.buffers.vertices);
-            gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(program.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
 
-            gl.uniform4fv(shaderProgram.attribLocations.color, renderable.color);
+            gl.uniform4fv(program.attribLocations.color, renderable.color);
 
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderable.buffers.indices);
             
@@ -172,7 +201,7 @@ export class Renderer{
 
                 mat4.fromRotationTranslation(this.dynamicModelViewMatrix, projectile.rot, projectile.pos);
                 mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
-                gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, this.dynamicModelViewMatrix);
+                gl.uniformMatrix4fv(program.uniformLocations.modelViewProj, false, this.dynamicModelViewMatrix);
 
                 gl.drawElements(gl.TRIANGLES, renderable.indexCount, gl.UNSIGNED_SHORT, 0)
             }
@@ -189,20 +218,18 @@ export class Renderer{
         gl.depthMask(true);
 
         //Draw FPS weapon
-        {
-            gl.clear(gl.DEPTH_BUFFER_BIT);
-            let p = this.shaderPrograms[5];
-            gl.useProgram(p.program);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+        program = this.shaderPrograms[5];
+        gl.useProgram(program.program);
 
-            mat4.fromRotationTranslation(this.dynamicModelViewMatrix, scene.weaponRecoil, scene.weaponOffset);
-            mat4.multiply(this.dynamicModelViewMatrix, this.projectionMatrix, this.dynamicModelViewMatrix);
+        mat4.fromRotationTranslation(this.dynamicModelViewMatrix, scene.weaponRecoil, scene.weaponOffset);
+        mat4.multiply(this.dynamicModelViewMatrix, this.projectionMatrix, this.dynamicModelViewMatrix);
 
-            quat.multiply(aa_math.QUAT_TEMP, scene.weaponRecoil, scene.player.rot);
-            mat4.fromQuat(this.invTranspose, aa_math.QUAT_TEMP);
-            mat3.fromMat4(this.normalMatrix, this.invTranspose);
+        quat.multiply(aa_math.QUAT_TEMP, scene.weaponRecoil, scene.player.rot);
+        mat4.fromQuat(this.invTranspose, aa_math.QUAT_TEMP);
+        mat3.fromMat4(this.normalMatrix, this.invTranspose);
 
-            this.pov_weapon_mesh_list[0].draw(gl, p, this.meshTextures[0], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
-        }
+        this.pov_weapon_mesh_list[0].draw(gl, program, this.meshTextures[0], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
         //Draw GUI - weapon, health, etc.
         // gl.disable(gl.DEPTH_TEST);
         // this.guiSpriteBatch.draw(gl, this.shaderPrograms[2], scene.guiSprites);

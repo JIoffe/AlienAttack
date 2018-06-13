@@ -13,6 +13,7 @@ import { RigidBody } from '../physics/rigid-body';
 import { Projectile, ProjectileTypes } from './projectile';
 import { ParticleSystem } from '../physics/particle-system';
 import { DecalSystem } from '../geometry/decal-system';
+import { AnimatedMesh } from '../geometry/animated-mesh';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
@@ -78,6 +79,21 @@ export class Scene{
         this.player.sectorPtr = map.startingPlayerSector;
     }
 
+    setEnemies(enemies){
+        this.enemies = enemies.map(e => {
+            const def = art.enemy_definitions[e.def];
+            const m = new AnimatedMesh(def.mesh);
+            vec3.copy(m.pos, e.pos);
+
+            m.hp = (Math.random() * 0.5 + 0.5) * def.hp;
+
+            return m;
+        });
+
+        // //We can drop the extra list of enemies
+        // art.enemies = [];
+    }
+
     update(time, input){
         const player = this.player;
         const map = this.map;
@@ -85,6 +101,9 @@ export class Scene{
         /*
             PLAYER MOVEMENT - Forward, Back, Strafe
         */
+        if(input.action){
+            console.log(player.pos, this.map.sectors[player.sectorPtr].getFloorHeight(player.pos[0], player.pos[2]));
+        }
         let isMoving = false;
         if(input.moveForward){
             player.moveForward2d(PLAYER_MOVEMENT_SPEED);
@@ -211,5 +230,9 @@ export class Scene{
             default:
                 return 4;
         }
+    }
+
+    get bloodDecal(){
+        return Math.random() > 0.5 ? 0 : 1;
     }
 }

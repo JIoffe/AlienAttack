@@ -5,6 +5,7 @@ import { ShaderProgram, VertexShaders, FragmentShaders } from "../../shaders";
 import { MeshBatch } from "../../geometry/mesh-batch";
 import { TextureUtils } from "../../utils/texture.utils";
 import { AnimatedMesh } from "../../geometry/animated-mesh";
+import { addAnimatedGeometry } from "../../geometry/animated-mesh-repository";
 
 const fov = 60;
 const near = 0.1;
@@ -48,7 +49,21 @@ export class ImportToolRenderer extends RendererBase{
             this.meshBatch.bind(gl, p);
             this.meshBatch.draw(gl, p, 0, this.dynamicModelViewMatrix);
         }else if(!!this.animatedMesh){
-            this.animatedMesh.advanceFrame(time);
+            if(this.animatedMesh.currentAnimation.label !== scene.selectedAnimation.label){
+                this.animatedMesh.setAnimationByLabel(scene.selectedAnimation.label);
+                this.animatedMesh.stop();
+            }
+
+            switch(scene.playbackMode){
+                case 0:
+                    this.animatedMesh.advanceFrame(time);
+                    break;
+                case 1:
+                    this.animatedMesh.stop();
+                case 2:
+                default: 
+                    break;
+            }
             
             p = this.shaderPrograms[1];
             gl.useProgram(p.program);
@@ -78,7 +93,9 @@ export class ImportToolRenderer extends RendererBase{
 
     setMesh(mesh){
         if(!!mesh.isAnimated){
-            this.animatedMesh = new AnimatedMesh(this.gl, mesh);
+            //this.animatedMesh = new AnimatedMesh(this.gl, mesh);
+            addAnimatedGeometry(this.gl, mesh);
+            this.animatedMesh = new AnimatedMesh(0);
             this.meshBatch = null;
         }else{
             this.meshBatch = new MeshBatch(this.gl, [mesh]);

@@ -257,15 +257,7 @@ export class MapTesselator{
 function _getVTexCoordRepeat(ceil, floor, wall){
     return ((ceil - floor)/art.MAP_Z_IMPORT_SCALE * wall.yrepeat) / 2048.0 / art.wallTexDimensY[wall.picnum];
 }
-function _getVTexCoord(yref, y, wall){
-    var v = (y/(art.MAP_Z_IMPORT_SCALE * 512.0) + wall.ypanning) / art.wallTexDimensY[wall.picnum];
-    console.log(v);
-    return v;
-    //return ((-y / art.MAP_IMPORT_SCALE)  + wall.ypanning) / art.wallTexDimensY[wall.picnum];
-    //                z / (art.MAP_IMPORT_SCALE * 1024.0) + sector.floorypanning / 256.0 * art.wallTexDimensY[picnum]
-   // return y * 16 / (art.wallTexDimensY[wall.picnum] * 2048.0);
-    //return (yref + (y/art.MAP_Z_IMPORT_SCALE) * 16) / (art.wallTexDimensY[wall.picnum] * 2048.0) / wall.yrepeat;
-}
+
 var tessy = (function initTesselator() {
     // function called for each vertex of tesselator output
     function vertexCallback(data, polyVertArray) {

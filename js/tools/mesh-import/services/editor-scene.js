@@ -11,5 +11,7 @@ export class EditorScene{
 
         this.translation = vec3.create();
         this.rot = quat.create();
+
+        this.playbackMode = 0;
     }
 }
