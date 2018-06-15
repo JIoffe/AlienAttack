@@ -62,9 +62,14 @@ export class LevelMap{
      * @param {WebGLProgram} shaderProgram 
      * @param {GLint[]} textures 
      */
-    draw(gl, modelViewMatrix, shaderProgram, textures){
+    draw(gl, modelViewMatrix, shaderProgram, textures, lightViewProj, shadowTex){
         gl.useProgram(shaderProgram.program);
         gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, modelViewMatrix);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, shadowTex);
+        gl.uniform1i(shaderProgram.uniformLocations.shadowSampler, 1);
+        gl.uniformMatrix4fv(shaderProgram.uniformLocations.lightViewProj, false, lightViewProj);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers[0]);
         gl.vertexAttribPointer(shaderProgram.attribLocations.vertexPosition, 4, gl.FLOAT, false, 24, 0);
@@ -207,9 +212,15 @@ export class LevelMap{
         let a,b,d;
         let planeNormal, planed, planepicnum;
 
+        visitedSectorSet.clear();
         pendingSectorStack.clear();
 
         do{
+            if(visitedSectorSet.has(sectorPtr))
+                continue;
+
+            visitedSectorSet.add(sectorPtr);
+
             const sector = this.sectors[sectorPtr],
                 end = sector.wallptr + sector.wallnum;
 

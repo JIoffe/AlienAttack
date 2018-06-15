@@ -5,36 +5,37 @@ import * as art from './art';
 import { Skybox } from './geometry/skybox';
 import { TextureUtils } from './utils/texture.utils';
 import { Laser } from './geometry/fx/laser';
-import { ObjReader } from './io/obj-reader';
-import { ParticleSystem } from './physics/particle-system';
 import { MeshReader } from './io/mesh-reader';
 import { addAnimatedGeometry } from './geometry/animated-mesh-repository';
+import { RendererBase } from './rendering/renderer.base';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
+
+//SHADOW MAP SETTINGS
+const SHADOWMAP_WIDTH = 1024;
+const SHADOWMAP_HEIGHT = 1024;
+const SHADOWMAP_RANGE = 10;
 
 //View Frustum
 const fov = 60;
 const near = 0.1;
 const far = 100;
 
-const VEC3_UP = new Float32Array([0, 1, 0]);
-
-const clipLeft = -1.0;
-const clipRight = 1.0;
-const cullp0 = vec4.create();
-
-
 //Iterator variables
 var projectile, program, enemy;
 let i;
 
-export class Renderer{
+var gl;
+
+export class Renderer extends RendererBase{
     constructor(canvas){
-        this.gl = this.getGLRenderingContext(canvas);
-        const w = this.gl.viewportWidth;
-        const h = this.gl.viewportHeight;
-        this.projectionMatrix = aa_math.buildProjectionMatrix(fov, w, h, near, far);
+        super(canvas);
+        this.projectionMatrix = this.buildProjectionMatrix(this.gl, fov, near, far);
+
+        this.shadowMapProjectionMatrix = mat4.create();
+        this.shadowMapViewMatrix = mat4.create();
+        mat4.ortho(this.shadowMapProjectionMatrix, -SHADOWMAP_RANGE, SHADOWMAP_RANGE, -SHADOWMAP_RANGE, SHADOWMAP_RANGE, 1, 100);
 
         this.skybox = new Skybox(this.gl);
         this.sectorRenderQueue = new Int32Array(MAX_SECTORS_DRAWN);
@@ -47,26 +48,17 @@ export class Renderer{
           Laser.renderable  
         ];
 
-        //These float32 buffer matrices are used for camera transforms
-        this.modelViewMatrix = mat4.create();
-        this.dynamicModelViewMatrix = mat4.create();
-        this.invTranspose = mat4.create();
-        this.normalMatrix = mat3.create();
-
-        //Always enable essential attributes for position and texCoords
-        this.gl.enableVertexAttribArray(0);
-        this.gl.enableVertexAttribArray(1);
-
         this.meshReader = new MeshReader();
 
         this.meshBatches = [];
-        //Create buffers for geometry
-        //this.gl
+
+        gl = this.gl;
     }
 
     initialize(){
         return new Promise((resolve, reject) => {
             this.initializeShaders();
+            this.initializeShadowMapFrameBuffer();
 
             const promises = [
                 this.initializeTextures(),
@@ -128,7 +120,6 @@ export class Renderer{
     }
 
     initializeMeshList(listName){
-        const gl = this.gl;
         return new Promise((resolve, reject) => {
             const promises = art[listName].map(meshDef => this.meshReader.read(gl, meshDef));
 
@@ -151,9 +142,12 @@ export class Renderer{
     }
 
     renderFrame(scene, time){
-        const gl = this.gl;
-        gl.clear(gl.DEPTH_BUFFER_BIT);
+        //Draw shadow map first
+        this.renderShadowMap(scene);
 
+        //Continue with primary rendering
+        this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
         aa_math.buildCameraEyeMatrix(this.modelViewMatrix, scene.player.pos, scene.player.rot);
 
         //The 3x3 inverse transpose of the MV matrix can transform normals
@@ -165,7 +159,7 @@ export class Renderer{
 
         //Now that we have our View/Projection matrix we're able to clip portals against clip space...
         this.skybox.draw(gl, this.shaderPrograms[0], this.skyboxTex, this.modelViewMatrix, this.normalMatrix);
-        scene.map.draw(gl, this.modelViewMatrix, this.shaderPrograms[1], this.wallTextures);
+        scene.map.draw(gl, this.modelViewMatrix, this.shaderPrograms[1], this.wallTextures, this.shadowMapViewMatrix, this.shadowFB.frameBufferDepthTex);
 
         if(scene.enemies.length > 0){
             program = this.shaderPrograms[7];
@@ -179,7 +173,6 @@ export class Renderer{
                 enemy = scene.enemies[i];
                 mat4.fromRotationTranslation(this.dynamicModelViewMatrix, enemy.rot, enemy.pos);
                 mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
-                enemy.advanceFrame(time);
                 enemy.draw(gl, program, this.dynamicModelViewMatrix);
             }
         }
@@ -235,11 +228,35 @@ export class Renderer{
         // this.guiSpriteBatch.draw(gl, this.shaderPrograms[2], scene.guiSprites);
         // gl.enable(gl.DEPTH_TEST);
     }
+
+    renderShadowMap(scene){
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFB.frameBuffer);
+        gl.viewport(0, 0, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
+
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        var pos = scene.player.pos;
+        mat4.lookAt(this.shadowMapViewMatrix, [20 + pos[0], 35 + pos[1], 36 + pos[2]], [pos[0],pos[1]+5,pos[2]], [0,1,0]);       
+        mat4.multiply(this.shadowMapViewMatrix, this.shadowMapProjectionMatrix, this.shadowMapViewMatrix);
+
+        program = this.shaderPrograms[8];
+        gl.useProgram(program.program);
+
+        for(i = 0; i < scene.enemies.length; ++i){
+            enemy = scene.enemies[i];
+            mat4.fromRotationTranslation(this.dynamicModelViewMatrix, enemy.rot, enemy.pos);
+            mat4.multiply(this.dynamicModelViewMatrix, this.shadowMapViewMatrix, this.dynamicModelViewMatrix);
+            enemy.draw(gl, program, this.dynamicModelViewMatrix);
+        }
+
+        // gl.bindTexture(gl.TEXTURE_2D, this.shadowFB.frameBufferTex);
+        // gl.generateMipmap(gl.TEXTURE_2D);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
     
     //Utility Methods
     initializeShaders(){
-        const gl = this.gl;
-
         this.shaderPrograms = [
             new ShaderProgram(gl, VertexShaders.skybox, FragmentShaders.skybox),
             new ShaderProgram(gl, VertexShaders.walls, FragmentShaders.walls),
@@ -248,27 +265,12 @@ export class Renderer{
             new ShaderProgram(gl, VertexShaders.notex, FragmentShaders.solidcolor),
             new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective),
             new ShaderProgram(gl, VertexShaders.decal, FragmentShaders.decal),
-            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.gui)
+            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.gui),
+            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.no_output)  //For rendering to shadowmap
         ];
     }
 
-    getGLRenderingContext(canvas){
-        var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-        if(!gl){
-            return null;
-        }
-
-        gl.viewportWidth = canvas.getAttribute('width');
-        gl.viewportHeight = canvas.getAttribute('height');
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LESS);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.BACK);
-
-        return gl;
+    initializeShadowMapFrameBuffer(){
+        this.shadowFB = this.buildShadowMapFrameBuffer(this.gl, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
     }
 }

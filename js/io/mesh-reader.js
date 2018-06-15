@@ -65,6 +65,19 @@ export class MeshReader{
 
                 const fileContents = xhr.response;
                 const meshData = this.supportedReaders.get(ext).parse(fileContents);
+                if(!!meshDef.importScale && meshDef.importScale !== 1){
+                    for(let i = 0; i < meshData.vertices.length; ++i){
+                        meshData.vertices[i] *= meshDef.importScale;
+                    }
+
+                    if(!!meshData.animations){
+                        meshData.animations.forEach(a => {
+                            for(let i = 0; i < a.frames.length; ++i){
+                                a.frames[i] *= meshDef.importScale;
+                            }
+                        })
+                    }
+                }
                 resolve(meshData);
             };
 

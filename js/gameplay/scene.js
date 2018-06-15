@@ -14,6 +14,7 @@ import { Projectile, ProjectileTypes } from './projectile';
 import { ParticleSystem } from '../physics/particle-system';
 import { DecalSystem } from '../geometry/decal-system';
 import { AnimatedMesh } from '../geometry/animated-mesh';
+import { EnemyFactory } from './enemies/enemy-factory';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
@@ -82,16 +83,11 @@ export class Scene{
     setEnemies(enemies){
         this.enemies = enemies.map(e => {
             const def = art.enemy_definitions[e.def];
-            const m = new AnimatedMesh(def.mesh);
+            const m = EnemyFactory.createEnemy(def);
             vec3.copy(m.pos, e.pos);
-
-            m.hp = (Math.random() * 0.5 + 0.5) * def.hp;
 
             return m;
         });
-
-        // //We can drop the extra list of enemies
-        // art.enemies = [];
     }
 
     update(time, input){
@@ -166,6 +162,10 @@ export class Scene{
             }
         }
 
+        for(let i = 0; i < this.enemies.length; ++i){
+            this.enemies[i].update(time);
+        }
+
         this.particleSystem.update(time);
     }
 
@@ -215,6 +215,14 @@ export class Scene{
 
         //        aa_math.lookAtRotation(projectile.rot, startingPosition, targetPosition);
 
+    }
+
+    addBloodSpatter(p, sectorPtr){
+        const d = aa_math.getRandomDirection();
+        const cd = this.map.lineSegmentTrace(p[0], p[1], p[2], p[0] + d[0] * 3, p[1] + d[1] * 3, p[2] + d[2] * 3, sectorPtr);
+        if(cd.hasCollision){
+            this.decalSystem.add(this.bloodDecal, cd.point, cd.surfaceNormal, 3);
+        }
     }
 
     getDamageDecal(picnum){

@@ -123,15 +123,18 @@ const VertexShaders = {
         attribute vec2 aTexCoords;
 
         uniform mat4 uModelViewProj;
+        uniform mat4 uLightViewProj;
 
+        varying vec4 vPositionLightSpace;
         varying vec2 vTextureCoords;
         varying float vShade;
-        varying float depth;
 
         void main() {
+            vec4 pos = vec4(aVertexPosition.xyz, 1.0);
+            gl_Position = uModelViewProj * pos;
+            vPositionLightSpace = uLightViewProj * pos;
+
             vTextureCoords = aTexCoords;
-            gl_Position = uModelViewProj * vec4(aVertexPosition.xyz, 1.0);
-            depth = gl_Position.w;
             vShade = aVertexPosition.w;
         }
         `    
@@ -146,6 +149,14 @@ const FragmentShaders = {
 
     void main(void) {                
         gl_FragColor = vec4(1,0.7,0,1);
+    }  
+    `,
+    no_output:
+    `
+    precision mediump float;
+
+    void main(void) {
+        //WebGL Will automatically output the depth
     }  
     `,
     particle:
@@ -224,13 +235,23 @@ const FragmentShaders = {
         precision mediump float;
 
         uniform sampler2D uSampler;
+        uniform sampler2D uShadowSampler;
 
+        varying vec4 vPositionLightSpace;
         varying vec2 vTextureCoords;
         varying float vShade;
-        varying float depth;
 
         void main() {
-            float lighting = max(1.0 - depth / 25.0, 0.25) * vShade;
+            float lighting = clamp((30.0 - 1.0 / gl_FragCoord.w) / 30.0, 0.35, 1.0) * vShade;
+            vec3 positionLightSpace = vPositionLightSpace.xyz / vPositionLightSpace.w;
+            positionLightSpace = positionLightSpace * 0.5 + 0.5;
+
+            float shadowDepth = texture2D(uShadowSampler, positionLightSpace.xy).r;
+
+            if(shadowDepth < positionLightSpace.z){
+                lighting = 0.5;
+            }
+
             vec4 diffuse = texture2D(uSampler, vTextureCoords);
             diffuse.rgb *= lighting;
 
@@ -257,10 +278,12 @@ class ShaderProgram{
 
         this.uniformLocations = {
             modelViewProj: gl.getUniformLocation(program, 'uModelViewProj'),
+            lightViewProj: gl.getUniformLocation(program, 'uLightViewProj'),
             projectionMatrix: gl.getUniformLocation(program, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(program, 'uModelViewMatrix'),
             normalMatrix: gl.getUniformLocation(program, 'uNormalMatrix'),
             sampler: gl.getUniformLocation(program, 'uSampler'),
+            shadowSampler: gl.getUniformLocation(program, 'uShadowSampler'),
             samplerCube: gl.getUniformLocation(program, 'uSamplerCube'),
             cameraPos: gl.getUniformLocation(program, 'uCameraPos'),
             color: gl.getUniformLocation(program, 'uColor'),
