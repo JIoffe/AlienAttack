@@ -6,6 +6,7 @@ export class Player extends RigidBody{
         super();
 
         this.eye = vec3.create();
+        this.activeWeapon = 0;
     }
 
     update(time, map){

@@ -8,6 +8,7 @@ import { Laser } from './geometry/fx/laser';
 import { MeshReader } from './io/mesh-reader';
 import { addAnimatedGeometry } from './geometry/animated-mesh-repository';
 import { RendererBase } from './rendering/renderer.base';
+import { Renderable } from './geometry/renderable';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -107,13 +108,30 @@ export class Renderer extends RendererBase{
     initializeModels(){
         return new Promise((resolve, reject) => {
             const promises = [
-                this.initializeMeshList('pov_weapon_mesh_list'),
+                this.initializePOVWeaponMeshes(art.player_weapons),
                 this.meshReader.download(art.scene_mesh_list[0])
                     .then(m => this.buildMeshBuffers(m))
             ];
             Promise.all(promises)
                 .then(() => {
                     delete this.meshReader;
+                    resolve();
+                });
+        });
+    }
+
+    initializePOVWeaponMeshes(weaponDefinitions){
+        this.povWeaponTex = weaponDefinitions
+            .map(def => def.povMesh.tex);
+
+        return new Promise((resolve, reject) => {
+            var promises = weaponDefinitions
+                .map(def => this.meshReader.download(def.povMesh)
+                    .then(m => new Renderable(this.gl, m.vertices, m.indices, m.texCoords, m.normals)));
+
+            Promise.all(promises)
+                .then(povMeshRenderables => {
+                    this.povWeaponMeshes = povMeshRenderables;
                     resolve();
                 });
         });
@@ -200,7 +218,7 @@ export class Renderer extends RendererBase{
             }
         }
         
-        //Particles do not write to the depth buffer
+        //Particles and decales do not write to the depth buffer
         gl.depthMask(false);
         scene.decalSystem.draw(gl, this.modelViewMatrix, this.shaderPrograms[6], this.particleTextures[0]);
 
@@ -222,7 +240,8 @@ export class Renderer extends RendererBase{
         mat4.fromQuat(this.invTranspose, aa_math.QUAT_TEMP);
         mat3.fromMat4(this.normalMatrix, this.invTranspose);
 
-        this.pov_weapon_mesh_list[0].draw(gl, program, this.meshTextures[0], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
+        this.povWeaponMeshes[scene.player.activeWeapon]
+            .draw(gl, program, this.meshTextures[this.povWeaponTex[scene.player.activeWeapon]], this.envTex, this.dynamicModelViewMatrix, this.normalMatrix);
         //Draw GUI - weapon, health, etc.
         // gl.disable(gl.DEPTH_TEST);
         // this.guiSpriteBatch.draw(gl, this.shaderPrograms[2], scene.guiSprites);

@@ -22,7 +22,6 @@ export function addAnimatedGeometry(gl, meshData){
         stride: meshData.vcount * 12
     };
 
-    console.log(animatedMesh);
     animatedGeometryRepository.push(animatedMesh);
 }
 

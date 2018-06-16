@@ -67,10 +67,15 @@ export const decals = {
 }
 
 /**
- * List of meshes to use for rendering weapons from the player's point of view
+ * List of definitions for player useable weapons
  */
-export const pov_weapon_mesh_list = [
-    {path: '/models/blaster-pistol.obj', importScale: 1.0}
+export const player_weapons = [
+    {
+        label: 'Blaster Pistol',
+        povMesh: {path: '/models/weapons/pov/blaster_pistol.json', importScale: 0.25, tex: 0},
+        muzzleOffset: new Float32Array([-0.45, -0.25, 2.0]),
+        weaponOffset: new Float32Array([1.7, -2, -4.2]) 
+    }
 ];
 
 export const scene_mesh_list = [

@@ -116,9 +116,8 @@ export class Scene{
 
         quat.fromEuler(player.rot, input.mouseY, input.mouseX, 0);
 
-        this.weaponOffset[0] = 1.7;
-        this.weaponOffset[1] = -2;
-        this.weaponOffset[2] = -4.2;
+        vec3.copy(this.weaponOffset, art.player_weapons[player.activeWeapon].weaponOffset);
+
 
         isMoving = true;
         if(isMoving){
@@ -192,12 +191,10 @@ export class Scene{
         quat.copy(projectile.rot, this.player.rot);
         projectile.setSpeed(LASER_SPEED);
 
-        projectile.pos[0] = -0.45;
-        projectile.pos[1] = 2;
-        projectile.pos[2] = 2.0;
+        vec3.copy(projectile.pos, art.player_weapons[this.player.activeWeapon].muzzleOffset);
 
         vec3.transformQuat(projectile.pos, projectile.pos, this.player.rot);
-        vec3.add(projectile.pos, projectile.pos, this.player.pos);
+        vec3.add(projectile.pos, projectile.pos, this.player.eye);
         projectile.sectorPtr = this.map.determineSector(this.player.sectorPtr, projectile.pos[0], projectile.pos[2]);
 
         //        aa_math.lookAtRotation(projectile.rot, startingPosition, targetPosition);
