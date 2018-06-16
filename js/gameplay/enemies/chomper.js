@@ -15,7 +15,7 @@ export class Chomper extends BaseEnemy{
 
         switch(this.lifecycle_state){
             case 0:
-                if(scene.map.hasLineOfSight(this.pos, scene.player.pos, this.sectorPtr)){
+                if(scene.map.hasLineOfSight(this.pos, scene.player.eye, this.sectorPtr)){
                     this.lifecycle_state = 1;
                 }
                 break;
