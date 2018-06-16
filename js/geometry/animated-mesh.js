@@ -1,16 +1,16 @@
 import { getAnimatedGeometry } from "./animated-mesh-repository";
 import { vec3, quat } from "gl-matrix";
+import { RigidBody } from "../physics/rigid-body";
 
 var i, stride;
 
-export class AnimatedMesh{
+export class AnimatedMesh extends RigidBody{
     constructor(i){
+        super();
+
         this.definition = getAnimatedGeometry(i);
         this.currentAnimation = this.definition.animations[0];
         this.stop();
-
-        this.pos = vec3.create();
-        this.rot = quat.create();
     }
 
     setAnimationByLabel(label){

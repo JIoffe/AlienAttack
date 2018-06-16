@@ -100,6 +100,9 @@ export class ParticleSystem{
             //Spread it against the angleVariance (radians)
             quat.fromEuler(aa_math.QUAT_TEMP, Math.random() * doubleVariance - angleVariance, Math.random() * doubleVariance - angleVariance, Math.random() * doubleVariance - angleVariance);
             vec3.transformQuat(particle.velocity, forceVector, aa_math.QUAT_TEMP);
+            particle.velocity[0] *= Math.random();
+            particle.velocity[1] *= Math.random();
+            particle.velocity[2] *= Math.random();
             vec3.copy(particle.pos, pos);
 
             particle.life = 1;

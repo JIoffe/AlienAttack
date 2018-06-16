@@ -9,27 +9,15 @@ import * as art from '../art';
 import * as array_utils from '../utils/array.utils';
 
 import { quat, vec3, mat4 } from 'gl-matrix';
-import { RigidBody } from '../physics/rigid-body';
 import { Projectile, ProjectileTypes } from './projectile';
 import { ParticleSystem } from '../physics/particle-system';
 import { DecalSystem } from '../geometry/decal-system';
-import { AnimatedMesh } from '../geometry/animated-mesh';
 import { EnemyFactory } from './enemies/enemy-factory';
+import { Player } from './player';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
 const PLAYER_TURN_SPEED = 65.4; //Degrees per second
-
-const PLAYER_COLLISION_RADIUS = 1.0;
-const PLAYER_HEIGHT = 2.25;
-const PLAYER_HEIGHT_PADDING = 0.25;
-
-const GRAVITY = 15;
-
-const FIRE_ANIM_DELAY = 200;
-
-var fireAnimTime = 0;
-var firedSemiAuto = false;
 
 const LASER_SPEED = 50;
 
@@ -43,8 +31,7 @@ quat.fromEuler(WEAPON_DEFAULT_ROTATION, 0, 15, 0);
 
 export class Scene{
     constructor(){
-        this.player = new RigidBody();
-        this.player.radius = PLAYER_COLLISION_RADIUS;
+        this.player = new Player();
 
         //Deep copy of sprite definitions in case we need to move things around later
         this.guiSprites = art.gui_sprites.map(s => {
@@ -163,7 +150,7 @@ export class Scene{
         }
 
         for(let i = 0; i < this.enemies.length; ++i){
-            this.enemies[i].update(time);
+            this.enemies[i].update(this, time);
         }
 
         this.particleSystem.update(time);
@@ -206,7 +193,7 @@ export class Scene{
         projectile.setSpeed(LASER_SPEED);
 
         projectile.pos[0] = -0.45;
-        projectile.pos[1] = -0.25;
+        projectile.pos[1] = 2;
         projectile.pos[2] = 2.0;
 
         vec3.transformQuat(projectile.pos, projectile.pos, this.player.rot);

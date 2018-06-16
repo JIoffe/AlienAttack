@@ -420,4 +420,8 @@ export class LevelMap{
 
         return collisionData;
     }
+
+    hasLineOfSight(eye, target, sectorPtr){
+        return !this.lineSegmentTrace(eye[0], eye[1], eye[2], target[0], target[1], target[2], sectorPtr).hasCollision;
+    }
 }

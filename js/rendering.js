@@ -148,7 +148,7 @@ export class Renderer extends RendererBase{
         //Continue with primary rendering
         this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
         gl.clear(gl.DEPTH_BUFFER_BIT);
-        aa_math.buildCameraEyeMatrix(this.modelViewMatrix, scene.player.pos, scene.player.rot);
+        aa_math.buildCameraEyeMatrix(this.modelViewMatrix, scene.player.eye, scene.player.rot);
 
         //The 3x3 inverse transpose of the MV matrix can transform normals
         mat4.transpose(this.invTranspose, this.modelViewMatrix);
@@ -233,6 +233,7 @@ export class Renderer extends RendererBase{
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFB.frameBuffer);
         gl.viewport(0, 0, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
 
+        //Only clear the depth buffer since we're directly referencing it for shadows
         gl.clear(gl.DEPTH_BUFFER_BIT);
 
         var pos = scene.player.pos;
@@ -249,9 +250,6 @@ export class Renderer extends RendererBase{
             enemy.draw(gl, program, this.dynamicModelViewMatrix);
         }
 
-        // gl.bindTexture(gl.TEXTURE_2D, this.shadowFB.frameBufferTex);
-        // gl.generateMipmap(gl.TEXTURE_2D);
-        // gl.bindTexture(gl.TEXTURE_2D, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
     

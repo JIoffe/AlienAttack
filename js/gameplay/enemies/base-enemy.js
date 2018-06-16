@@ -15,7 +15,8 @@ export class BaseEnemy extends AnimatedMesh{
         this.hp = (Math.random() * 0.5 + 0.5) * enemyDefinition.hp;
     }
 
-    update(time){
+    update(scene, time){
+        super.update(time, scene.map);
         this.advanceFrame(time);
     }
 
@@ -38,5 +39,14 @@ export class BaseEnemy extends AnimatedMesh{
 
     perish(){
         //Implement in specific classes
+    }
+
+    //Overrides for rigid body
+    get radius(){
+        return this.enemyDefinition.radius;
+    }
+
+    get height(){
+        return this.enemyDefinition.height;
     }
 }
