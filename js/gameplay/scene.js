@@ -14,6 +14,7 @@ import { ParticleSystem } from '../physics/particle-system';
 import { DecalSystem } from '../geometry/decal-system';
 import { EnemyFactory } from './enemies/enemy-factory';
 import { Player } from './player';
+import { StaticBatchedMesh } from '../geometry/static-batched-mesh';
 
 //AKA the game state
 const PLAYER_MOVEMENT_SPEED = 5;
@@ -77,6 +78,21 @@ export class Scene{
         });
     }
 
+    setProps(props){
+        this.props = props.map(p => {
+            const def = p.def;
+
+            const prop = new StaticBatchedMesh(def);
+            vec3.copy(prop.pos, p.pos);
+            quat.copy(prop.rot, p.rot);
+            return prop;
+        });
+
+        //DEBUG ONLY!!!
+        window.props = this.props;
+        window.makeRot = (x,y,z) => quat.fromEuler(quat.create(), x,y,z);
+    }
+
     update(time, input){
         const player = this.player;
         const map = this.map;
@@ -86,6 +102,7 @@ export class Scene{
         */
         if(input.action){
             console.log(player.pos, this.map.sectors[player.sectorPtr].getFloorHeight(player.pos[0], player.pos[2]));
+            console.log(player.rot);
         }
         let isMoving = false;
         if(input.moveForward){

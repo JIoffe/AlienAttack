@@ -98,15 +98,6 @@ export class RigidBody{
                             }else{
                                 nextY = Math.max(floorHeight, nextY);
                             }
-                            //nextY = Math.max(floorHeight, nextY);
-                            //recycle floorheight for the ceiling overhang depth
-                            // floorHeight = map.sectors[wall.nextsector].getCeilingHeight(cd.point[0], cd.point[2]);
-                            // if(floorHeight < nextY + this.height){
-                            //     blocking = true;
-                            // }else{
-                            //     //rise to the step
-                            //     nextY = Math.max(floorHeight, nextY);
-                            // }
                         }
                     }
 
@@ -142,11 +133,11 @@ export class RigidBody{
         }else{
             //recycling variables...
             this.state |= IS_AIRBORNE;
-            floorHeight = map.sectors[this.sectorPtr].getCeilingHeight(px, pz);
-            if(floorHeight < nextY + this.height){
-                nextY = floorHeight - this.height;
-                this.velocity[1] = 0;
-            }
+            // floorHeight = map.sectors[this.sectorPtr].getCeilingHeight(px, pz);
+            // if(floorHeight < nextY + this.height){
+            //     nextY = floorHeight - this.height;
+            //     this.velocity[1] = 0;
+            // }
         }
 
         

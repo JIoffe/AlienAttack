@@ -3,7 +3,7 @@ import {Scene} from './gameplay/scene';
 import {Renderer} from './rendering';
 import {InputListener} from './gameplay/input';
 import {MapReader} from './io/mapreader';
-import { decals, enemies } from './art';
+import { decals, enemies, props } from './art';
 
 //This is not encapsulated as a "class"
 //to keep the scope simpler, as its not exported
@@ -43,6 +43,7 @@ import { decals, enemies } from './art';
                 .then(map => {
                     scene.setMap(map);
                     scene.setEnemies(enemies);
+                    scene.setProps(props);
                     map.prepareRenderableGeometry(renderer.gl);
                     scene.particleSystem.initialize(renderer.gl);
 

@@ -8,7 +8,13 @@ export const wallTextures = [
     '/img/metal-circuit1.png',
     '/img/floor1.png',
     '/img/grate.png',
-    '/img/glass1.png'
+    '/img/glass1.png',
+    '/img/carpet1.png',
+    '/img/blue-crate.png',
+    '/img/red-crate.png',
+    '/img/space-station-wall3-01.png',
+    '/img/station-floor2-01.png',
+    '/img/blue-energy.png'
 ];
 
 export const wallTexDimensX = [
@@ -17,6 +23,12 @@ export const wallTexDimensX = [
     32,
     64,
     64,
+    64,
+    256,
+    128,
+    128,
+    256,
+    256,
     64
 ];
 
@@ -26,6 +38,12 @@ export const wallTexDimensY = [
     32,
     64,
     64,
+    64,
+    256,
+    128,
+    128,
+    256,
+    256,
     64
 ];
 
@@ -93,19 +111,40 @@ export const enemy_definitions = [
 ]
 
 export const enemies = [
+    // {
+    //     def: 0,
+    //     pos: [50.22283351664667, -0.768, 62.81421581512507]
+    // },
+    // {
+    //     def: 0,
+    //     pos: [38.81010272715436, -0.768, 72.95589293956762]
+    // }
+];
+
+//Props are batched together in one giant VBO
+export const prop_batch_mesh_list = [
+    {path: '/models/props/chair.json', importScale: 0.225, tex: 2},
+    {path: '/models/props/computer-console.json', importScale: 0.9, tex: 3}
+];
+
+export const props = [
     {
         def: 0,
-        pos: [50.22283351664667, -0.768, 62.81421581512507]
+        pos: [48.04606628417969, -0.7680000066757202, 48.31871032714844],
+        rot: [0, 0.7071067690849304, 0, 0.7071067690849304]
     },
     {
-        def: 0,
-        pos: [38.81010272715436, -0.768, 72.95589293956762]
+        def: 1,
+        pos: [49.849552154541016, -0.7680000066757202, 48.306983947753906],
+        rot: [0, -0.7071067690849304, 0, 0.7071067690849304]
     }
-];
+]
 
 export const mesh_texture_list = [
     '/img/weapons/blaster-pistol.png',
-    '/img/characters/chomper1.png'
+    '/img/characters/chomper1.png',
+    '/img/props/chair.png',
+    '/img/props/computer_console.png'
 ];
 
 export const skyBox = '/img/skybox/space';

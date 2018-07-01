@@ -9,6 +9,7 @@ import { MeshReader } from './io/mesh-reader';
 import { addAnimatedGeometry } from './geometry/animated-mesh-repository';
 import { RendererBase } from './rendering/renderer.base';
 import { Renderable } from './geometry/renderable';
+import { MeshBatch } from './geometry/mesh-batch';
 
 const MAX_SECTORS_DRAWN = 64;
 const MAX_RENDER_QUEUE_SIZE = 128;
@@ -110,7 +111,9 @@ export class Renderer extends RendererBase{
             const promises = [
                 this.initializePOVWeaponMeshes(art.player_weapons),
                 this.meshReader.download(art.scene_mesh_list[0])
-                    .then(m => this.buildMeshBuffers(m))
+                    .then(m => this.buildMeshBuffers(m)),
+                this.downloadMeshBatch(art.prop_batch_mesh_list)
+                    .then(mb => this.propBatch = mb)
             ];
             Promise.all(promises)
                 .then(() => {
@@ -133,6 +136,17 @@ export class Renderer extends RendererBase{
                 .then(povMeshRenderables => {
                     this.povWeaponMeshes = povMeshRenderables;
                     resolve();
+                });
+        });
+    }
+
+    downloadMeshBatch(batch){
+        return new Promise((resolve, reject) => {
+            const promises = batch.map(def => this.meshReader.download(def));
+            
+            Promise.all(promises)
+                .then(meshes => {
+                    resolve(new MeshBatch(gl, meshes));
                 });
         });
     }
@@ -192,6 +206,25 @@ export class Renderer extends RendererBase{
                 mat4.fromRotationTranslation(this.dynamicModelViewMatrix, enemy.rot, enemy.pos);
                 mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
                 enemy.draw(gl, program, this.dynamicModelViewMatrix);
+            }
+        }
+
+        if(scene.props.length > 0){
+            program = this.shaderPrograms[9];
+            gl.useProgram(program.program);
+
+            this.propBatch.bind(gl, program);
+
+            for(i = 0; i < scene.props.length; ++i){
+                let prop = scene.props[i];
+
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, this.meshTextures[art.prop_batch_mesh_list[prop.i].tex]);
+                gl.uniform1i(program.uniformLocations.sampler, 0);
+
+                mat4.fromRotationTranslation(this.dynamicModelViewMatrix, prop.rot, prop.pos);
+                mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
+                this.propBatch.draw(gl, program, prop.i, this.dynamicModelViewMatrix);
             }
         }
 
@@ -283,7 +316,9 @@ export class Renderer extends RendererBase{
             new ShaderProgram(gl, VertexShaders.texturedWithNormals, FragmentShaders.reflective),
             new ShaderProgram(gl, VertexShaders.decal, FragmentShaders.decal),
             new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.gui),
-            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.no_output)  //For rendering to shadowmap
+            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.no_output),  //For rendering to shadowmap
+            new ShaderProgram(gl, VertexShaders.unlit, FragmentShaders.gui),
+            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.no_output)
         ];
     }
 

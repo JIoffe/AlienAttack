@@ -78,6 +78,7 @@ export class MeshReader{
                         })
                     }
                 }
+
                 resolve(meshData);
             };
 

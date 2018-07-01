@@ -3,6 +3,8 @@ import { Buffers } from "./buffers";
 /**
  * Batches a group of meshes to share data buffers
  */
+var i;
+
 export class MeshBatch{
     constructor(gl, meshes){
         this.batch(gl, meshes);
@@ -21,26 +23,17 @@ export class MeshBatch{
             indexRanges = [];
 
         meshes.forEach(mesh => {
-            if(!!mesh.vertices && !!mesh.vertices.length){
-                vertices = vertices.concat(mesh.vertices);
-            }else{
-                console.error('Missing vertex position data ', mesh);
+            if(!mesh.vertices || !mesh.indices || !mesh.texCoords){
+                console.error('Missing geometric data for mesh ', mesh);
+                return;
             }
 
-            if(!!mesh.indices && !!mesh.indices.length){
-                indexRanges.push(mesh.indices.length, indices.length);
-                indices = indices.concat(mesh.indices);
-            }else{
-                console.error('Missing face index data ', mesh);
-            }
+            let currentVertexCount = vertices.length / 3;
+            indexRanges.push(mesh.indices.length, indices.length * 2);
+            indices = indices.concat(mesh.indices.map(ind => ind + currentVertexCount));
 
-            if(!!mesh.texCoords && !!mesh.texCoords.length){
-                texCoords = texCoords.concat(mesh.texCoords);
-            }
-
-            // if(!!mesh.normals && !!mesh.normals.length){
-            //     normals = normals.concat(mesh.normals);
-            // }
+            vertices = vertices.concat(mesh.vertices);
+            texCoords = texCoords.concat(mesh.texCoords);
         });
 
         const bufferDesc = [
@@ -53,7 +46,7 @@ export class MeshBatch{
             Buffers.buildIndexBuffer(gl, indices)
         ];
 
-        this.indexRanges = new Int32Array(indexRanges);
+        this.indexRanges = new Int16Array(indexRanges);
     }
 
     /**
@@ -74,7 +67,7 @@ export class MeshBatch{
      * Must be called after bind().
      */
     draw(gl, shaderProgram, index, modelViewMatrix){
-        const i = index * 2;
+        i = index * 2;
         gl.uniformMatrix4fv(shaderProgram.uniformLocations.modelViewProj, false, modelViewMatrix);
         gl.drawElements(gl.TRIANGLES, this.indexRanges[i], gl.UNSIGNED_SHORT, this.indexRanges[i+1]);
     }
