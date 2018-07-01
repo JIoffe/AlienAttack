@@ -24,6 +24,10 @@ export class InputListener{
         this.mouseYSensitivity = 0.08;
 
         const lockUpdateCallback = this._onLockUpdate.bind(this);
+
+        //Clear input state flags when focus is lost
+        window.addEventListener('blur', () => this.inputStateFlags = 0);
+
         document.addEventListener('pointerlockchange', lockUpdateCallback, false);
         document.addEventListener('mozpointerlockchange', lockUpdateCallback, false);
         document.addEventListener('webkitpointerlockchange', lockUpdateCallback, false);
