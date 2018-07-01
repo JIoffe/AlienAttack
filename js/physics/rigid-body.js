@@ -133,11 +133,11 @@ export class RigidBody{
         }else{
             //recycling variables...
             this.state |= IS_AIRBORNE;
-            // floorHeight = map.sectors[this.sectorPtr].getCeilingHeight(px, pz);
-            // if(floorHeight < nextY + this.height){
-            //     nextY = floorHeight - this.height;
-            //     this.velocity[1] = 0;
-            // }
+            floorHeight = map.sectors[this.sectorPtr].getCeilingHeight(px, pz);
+            if(floorHeight < nextY + this.height){
+                nextY = floorHeight - this.height;
+                this.velocity[1] = 0;
+            }
         }
 
         
