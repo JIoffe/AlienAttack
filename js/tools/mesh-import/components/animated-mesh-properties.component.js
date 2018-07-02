@@ -35,7 +35,8 @@ class AnimatedMeshPropertiesController{
       label: '',
       frames: [],
       nFrames: 0,
-      speed: 1
+      speed: 1,
+      loop: false
     });
   }
 

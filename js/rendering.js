@@ -110,8 +110,7 @@ export class Renderer extends RendererBase{
         return new Promise((resolve, reject) => {
             const promises = [
                 this.initializePOVWeaponMeshes(art.player_weapons),
-                this.meshReader.download(art.scene_mesh_list[0])
-                    .then(m => this.buildMeshBuffers(m)),
+                this.downloadAnimatedMeshes(art.scene_mesh_list),
                 this.downloadMeshBatch(art.prop_batch_mesh_list)
                     .then(mb => this.propBatch = mb)
             ];
@@ -151,6 +150,17 @@ export class Renderer extends RendererBase{
         });
     }
 
+    downloadAnimatedMeshes(animatedMeshList){
+        return new Promise((resolve, reject) => {
+            const promises = animatedMeshList.map(def => this.meshReader.download(def));
+
+            Promise.all(promises).then(meshes => {
+                meshes.forEach(m => addAnimatedGeometry(gl, m));
+                resolve();
+            });
+        });
+    }
+
     initializeMeshList(listName){
         return new Promise((resolve, reject) => {
             const promises = art[listName].map(meshDef => this.meshReader.read(gl, meshDef));
@@ -160,12 +170,6 @@ export class Renderer extends RendererBase{
                 resolve();
             });
         });        
-    }
-
-    buildMeshBuffers(mesh){
-        if(!!mesh.isAnimated){
-            addAnimatedGeometry(this.gl, mesh);
-        }
     }
 
     get isReady(){
@@ -197,12 +201,12 @@ export class Renderer extends RendererBase{
             program = this.shaderPrograms[7];
             gl.useProgram(program.program);
 
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.meshTextures[1]);
-            gl.uniform1i(program.uniformLocations.sampler, 0);
-
             for(i = 0; i < scene.enemies.length; ++i){
                 enemy = scene.enemies[i];
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, this.meshTextures[enemy.enemyDefinition.tex]);
+                gl.uniform1i(program.uniformLocations.sampler, 0);
+
                 mat4.fromRotationTranslation(this.dynamicModelViewMatrix, enemy.rot, enemy.pos);
                 mat4.multiply(this.dynamicModelViewMatrix, this.modelViewMatrix, this.dynamicModelViewMatrix);
                 enemy.draw(gl, program, this.dynamicModelViewMatrix);

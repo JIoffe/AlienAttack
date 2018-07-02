@@ -97,24 +97,34 @@ export const player_weapons = [
 ];
 
 export const scene_mesh_list = [
-    {path: '/models/enemies/chomper.json', importScale: 0.7, tex: 1}
+    {path: '/models/enemies/chomper.json', importScale: 0.7, tex: 1},
+    {path: '/models/enemies/trooper.json', importScale: 0.25, tex: 4}
 ];
 
 export const enemy_definitions = [
     {
         type: "chomper",
+        tex: 1,
         mesh: 0,
         hp: 4,
         radius: 1,
         height: 2.5
-    }
+    },
+    {
+        type: "trooper",
+        tex: 4,
+        mesh: 1,
+        hp: 8,
+        radius: 1,
+        height: 2.5
+    },
 ]
 
 export const enemies = [
-    // {
-    //     def: 0,
-    //     pos: [50.22283351664667, -0.768, 62.81421581512507]
-    // },
+    {
+        def: 1,
+        pos: [44.04606628417969, -0.7680000066757202, 48.31871032714844]
+    },
     // {
     //     def: 0,
     //     pos: [38.81010272715436, -0.768, 72.95589293956762]
@@ -144,7 +154,8 @@ export const mesh_texture_list = [
     '/img/weapons/blaster-pistol.png',
     '/img/characters/chomper1.png',
     '/img/props/chair.png',
-    '/img/props/computer_console.png'
+    '/img/props/computer_console.png',
+    '/img/characters/trooper.png',
 ];
 
 export const skyBox = '/img/skybox/space';
