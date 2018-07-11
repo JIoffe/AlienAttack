@@ -47,7 +47,7 @@ import { decals, enemies, props } from './art';
                     map.prepareRenderableGeometry(renderer.gl);
                     scene.particleSystem.initialize(renderer.gl);
 
-                    input.mouseX = map.startingPlayerRotation;
+                    input.mouseX = -map.startingPlayerRotation * 2;
 
                     return scene.decalSystem.initialize(renderer.gl, decals);
                 })

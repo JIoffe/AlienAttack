@@ -62,8 +62,7 @@ export class Scene{
 
     setMap(map){
         this.map = map;
-        this.player.pos = map.startingPlayerPos;
-        quat.fromEuler(this.player.rot, 0, map.startingPlayerRotation, 0);
+        vec3.copy(this.player.pos, map.startingPlayerPos);
 
         this.player.sectorPtr = map.startingPlayerSector;
     }
@@ -73,6 +72,7 @@ export class Scene{
             const def = art.enemy_definitions[e.def];
             const m = EnemyFactory.createEnemy(def);
             vec3.copy(m.pos, e.pos);
+            quat.fromEuler(m.rot, 0, e.rot, 0);
 
             return m;
         });
@@ -89,6 +89,7 @@ export class Scene{
         });
 
         //DEBUG ONLY!!!
+        window.enemies = this.enemies;
         window.props = this.props;
         window.makeRot = (x,y,z) => quat.fromEuler(quat.create(), x,y,z);
     }
