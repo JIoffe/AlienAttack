@@ -20,8 +20,8 @@ export class Chomper extends BaseEnemy{
                 }
                 break;
             case 1:
-                // this.turnTowardsPoint(scene.player.pos, time.secondsSinceLastFrame * 2);
-                // this.moveForward2d(1);
+                this.turnTowardsPoint(scene.player.pos, time.secondsSinceLastFrame * 2);
+                this.moveForward2d(1);
                 this.t += time.secondsSinceLastFrame;
                 if(this.t >= chompDelay){
                     this.stop();

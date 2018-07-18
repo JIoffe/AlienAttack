@@ -191,7 +191,8 @@ export const enemies = [
 //Props are batched together in one giant VBO
 export const prop_batch_mesh_list = [
     {path: '/models/props/chair.json', importScale: 0.225, tex: 2},
-    {path: '/models/props/computer-console.json', importScale: 0.9, tex: 3}
+    {path: '/models/props/computer-console.json', importScale: 0.9, tex: 3},
+    {path: '/models/props/whiteboard.json', importScale: 0.55, tex: 5}
 ];
 
 export const props = [
@@ -224,7 +225,12 @@ export const props = [
         def: 1,
         pos: [48.23078155517578, -2.7839999198913574, 19.3011417388916],
         rot: [0, 1, 0, 6.123234262925839e-17]
-    }
+    },
+    {
+        def: 2,
+        pos: [64, 1.8, -18],
+        rot: [0, 0.7071067690849304, 0, 0.7071067690849304]
+    },
 ]
 
 export const mesh_texture_list = [
@@ -233,6 +239,7 @@ export const mesh_texture_list = [
     '/img/props/chair.png',
     '/img/props/computer_console.png',
     '/img/characters/trooper.png',
+    '/img/props/whiteboard.png',
 ];
 
 export const skyBox = '/img/skybox/space';
