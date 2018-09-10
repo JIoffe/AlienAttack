@@ -1,0 +1,20 @@
+echo "Loading alien attack textures"
+
+include duke3d.def
+tilefromtexture 0 { file "alienattack/wall1.png" }
+tilefromtexture 1 { file "alienattack/wall2.png" }
+tilefromtexture 2 { file "alienattack/metal-circuit1.png" }
+tilefromtexture 3 { file "alienattack/floor1.png" }
+tilefromtexture 4 { file "alienattack/grate.png" }
+tilefromtexture 5 { file "alienattack/glass1.png" }
+tilefromtexture 6 { file "alienattack/carpet1.png" }
+tilefromtexture 7 { file "alienattack/blue-crate.png" }
+tilefromtexture 8 { file "alienattack/red-crate.png" }
+tilefromtexture 9 { file "alienattack/space-station-wall3-01.png" }
+tilefromtexture 10 { file "alienattack/station-floor2-01.png" }
+tilefromtexture 11 { file "alienattack/blue-energy.png" }
+tilefromtexture 12 { file "alienattack/monitor-a-02.png" }
+tilefromtexture 13 { file "alienattack/monitor-b-03.png" }
+tilefromtexture 14 { file "alienattack/monitor-c-03-04.png" }
+tilefromtexture 15 { file "alienattack/monitorside.png" }
+tilefromtexture 16 { file "alienattack/pipes-01.png" }
