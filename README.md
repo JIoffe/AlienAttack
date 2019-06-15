@@ -8,8 +8,10 @@ This utilizes the Buld engine map format. The rendering code itself is custom, a
 Please do not redistribute the code outside of this repo.
 
 ## To Install and run
-This requires NPM to run locally, as well as a local server. I recommend http-server.
-First execute "npm run build", then run the game from alien_attack.html
+This requires NPM to run locally, as well as a local server.
+
+Install dependencies via "npm install" and then execute "npm run build" to create the bundle.
+Run the game from alien_attack.html from a local server.
 
 Also used:
 - [glMatrix](http://glmatrix.net/)
