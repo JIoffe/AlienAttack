@@ -14,10 +14,14 @@ Install dependencies via "npm install" and then execute "npm run build" to creat
 Run the game from alien_attack.html from a local server.
 
 ## Controls
-(Click on window to enable mouse look)
-WASD - Move Forward / Strafe
-CTRL/Mouse 1 - Fire
-Space - Jump
+<ul>
+<li>(Click on window to enable mouse look)</li>
+<li>**WASD** - Move Forward / Strafe</li>
+<li>**CTRL/Mouse 1** - Fire</li>
+<li>**Space** - Jump</li>
+</ul>
+
+CTRL may interfere with browser hotkey combinations. The key bindings are hard-coded in **gameplay/input.js**.
 
 ## Additional libraries used:
 - [glMatrix](http://glmatrix.net/)
