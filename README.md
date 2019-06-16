@@ -16,12 +16,13 @@ Run the game from alien_attack.html from a local server.
 ## Controls
 <ul>
 <li>(Click on window to enable mouse look)</li>
-<li>**WASD** - Move Forward / Strafe</li>
-<li>**CTRL/Mouse 1** - Fire</li>
-<li>**Space** - Jump</li>
+<li>WASD - Move Forward / Strafe</li>
+<li>CTRL/Mouse 1 - Fire</li>
+<li>Space - Jump</li>
 </ul>
 
-CTRL may interfere with browser hotkey combinations. The key bindings are hard-coded in **gameplay/input.js**.
+*CTRL may interfere with browser hotkey combinations.*
+The key bindings are hard-coded in **gameplay/input.js**.
 
 ## Additional libraries used:
 - [glMatrix](http://glmatrix.net/)
