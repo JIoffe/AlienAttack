@@ -13,6 +13,12 @@ This requires NPM to run locally, as well as a local server.
 Install dependencies via "npm install" and then execute "npm run build" to create the bundle.
 Run the game from alien_attack.html from a local server.
 
-Also used:
+## Controls
+(Click on window to enable mouse look)
+WASD - Move Forward / Strafe
+CTRL/Mouse 1 - Fire
+Space - Jump
+
+## Additional libraries used:
 - [glMatrix](http://glmatrix.net/)
 - [libtess.js](https://github.com/brendankenny/libtess.js)
