@@ -9,7 +9,7 @@ module.exports = [
       path: path.resolve(__dirname, 'dist')
     },
     plugins: [
-      //new UglifyJSPlugin()
+      new UglifyJSPlugin()
     ]
   },
   {
@@ -19,7 +19,7 @@ module.exports = [
       path: path.resolve(__dirname, 'dist')
     },
     plugins: [
-      //new UglifyJSPlugin()
+      new UglifyJSPlugin()
     ]
   }
 ];
