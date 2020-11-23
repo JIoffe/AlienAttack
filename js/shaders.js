@@ -154,9 +154,9 @@ const FragmentShaders = {
     no_output:
     `
     precision mediump float;
-
+    
     void main(void) {
-        //WebGL Will automatically output the depth
+        gl_FragColor = vec4(1,1,1,1);
     }  
     `,
     particle:
@@ -249,7 +249,7 @@ const FragmentShaders = {
             float shadowDepth = texture2D(uShadowSampler, positionLightSpace.xy).r;
 
             if(shadowDepth < positionLightSpace.z){
-                lighting = 0.5;
+                lighting *= 0.5;
             }
 
             vec4 diffuse = texture2D(uSampler, vTextureCoords);

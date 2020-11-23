@@ -17,7 +17,7 @@ const MAX_RENDER_QUEUE_SIZE = 128;
 //SHADOW MAP SETTINGS
 const SHADOWMAP_WIDTH = 1024;
 const SHADOWMAP_HEIGHT = 1024;
-const SHADOWMAP_RANGE = 10;
+const SHADOWMAP_RANGE = 15;
 
 //View Frustum
 const fov = 60;
@@ -321,8 +321,7 @@ export class Renderer extends RendererBase{
             new ShaderProgram(gl, VertexShaders.decal, FragmentShaders.decal),
             new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.gui),
             new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.no_output),  //For rendering to shadowmap
-            new ShaderProgram(gl, VertexShaders.unlit, FragmentShaders.gui),
-            new ShaderProgram(gl, VertexShaders.skinnedUnlit, FragmentShaders.no_output)
+            new ShaderProgram(gl, VertexShaders.unlit, FragmentShaders.gui)
         ];
     }
 
